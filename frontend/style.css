@@ -1,0 +1,46 @@
+/* Styles globaux pour les avatars utilisateur */
+.user-avatar,
+.user-profile,
+.profile-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+  font-size: 1.1rem !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+/* Style spécial pour la page profil */
+.profile-section .profile-avatar {
+  width: 90px !important;
+  height: 90px !important;
+  font-size: 2.2rem !important;
+  margin: 0 auto 20px auto !important;
+}
+
+/* Toutes les images d'avatar */
+.user-avatar img,
+.user-profile img,
+.profile-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  display: block !important;
+  background: #4a6fa5 !important;
+}
+
+/* Style du conteneur dans le header */
+.header-user {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}

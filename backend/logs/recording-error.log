@@ -1,0 +1,12 @@
+[2025-05-11T12:24:00.028Z] ERREUR FATALE: The "cb" argument must be of type function. Received undefined
+Stack: TypeError [ERR_INVALID_ARG_TYPE]: The "cb" argument must be of type function. Received undefined
+    at makeCallback (node:fs:189:3)
+    at Object.mkdir (node:fs:1346:14)
+    at Recording.create (C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\src\models\recording.model.js:59:16)
+    at create (C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\src\controllers\recording.controller.js:74:41)
+[2025-05-11T12:24:16.080Z] ERREUR FATALE: The "cb" argument must be of type function. Received undefined
+Stack: TypeError [ERR_INVALID_ARG_TYPE]: The "cb" argument must be of type function. Received undefined
+    at makeCallback (node:fs:189:3)
+    at Object.mkdir (node:fs:1346:14)
+    at Recording.create (C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\src\models\recording.model.js:59:16)
+    at create (C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\src\controllers\recording.controller.js:74:41)

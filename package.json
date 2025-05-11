@@ -1,22 +1,37 @@
 {
+  "name": "missie-moustass-web",
+  "version": "1.0.0",
+  "description": "Application web sécurisée pour l'enregistrement et le partage audio chiffré",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "dev": "nodemon backend/src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "audio",
+    "security",
+    "encryption",
+    "nodejs",
+    "express",
+    "mysql"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "mousstassweb-": "file:",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "helmet": "^6.1.5",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
     "mysql2": "^3.14.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
-  },
-  "name": "mousstassweb-",
-  "description": "r",
-  "version": "1.0.0",
-  "main": "./backend/src/app.js",
-  "scripts": {
-    "start": "cd backend && nodemon src/app.js",
-    
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }

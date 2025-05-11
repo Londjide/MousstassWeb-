@@ -1,0 +1,31 @@
+[2025-05-11T12:23:59.996Z] === DÉBUT CRÉATION ENREGISTREMENT ===
+[2025-05-11T12:23:59.999Z] Données: {"name":"test","userId":8,"duration":2}
+[2025-05-11T12:24:00.000Z] Buffer audio: présent, Taille: 46904 octets
+[2025-05-11T12:24:00.001Z] Génération de la clé AES
+[2025-05-11T12:24:00.002Z] Chiffrement des données audio avec AES
+[2025-05-11T12:24:00.008Z] Données chiffrées: 46912 octets
+[2025-05-11T12:24:00.011Z] Création du répertoire de stockage: C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\uploads
+[2025-05-11T12:24:16.059Z] === DÉBUT CRÉATION ENREGISTREMENT ===
+[2025-05-11T12:24:16.063Z] Données: {"name":"km","userId":8,"duration":3}
+[2025-05-11T12:24:16.066Z] Buffer audio: présent, Taille: 62313 octets
+[2025-05-11T12:24:16.068Z] Génération de la clé AES
+[2025-05-11T12:24:16.069Z] Chiffrement des données audio avec AES
+[2025-05-11T12:24:16.070Z] Données chiffrées: 62320 octets
+[2025-05-11T12:24:16.072Z] Création du répertoire de stockage: C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\uploads
+[2025-05-11T12:29:19.667Z] === DÉBUT CRÉATION ENREGISTREMENT ===
+[2025-05-11T12:29:19.668Z] Données: {"name":"test","userId":8,"duration":10}
+[2025-05-11T12:29:19.670Z] Buffer audio: présent, Taille: 163457 octets
+[2025-05-11T12:29:19.672Z] Génération de la clé AES
+[2025-05-11T12:29:19.674Z] Chiffrement des données audio avec AES
+[2025-05-11T12:29:19.680Z] Données chiffrées: 163472 octets
+[2025-05-11T12:29:19.683Z] Création du répertoire de stockage: C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\uploads
+[2025-05-11T12:29:19.687Z] Le répertoire existe déjà.
+[2025-05-11T12:29:19.690Z] Chemin du fichier: C:\Users\ES\Documents\Parcours\L3 CSI\languages\NODE JS\Architecture\MousstassWeb-\backend\uploads\8_1746966559689.enc
+[2025-05-11T12:29:19.696Z] Écriture du fichier chiffré (163505 octets)
+[2025-05-11T12:29:19.703Z] Fichier écrit avec succès
+[2025-05-11T12:29:19.705Z] Recherche de la clé publique de l'utilisateur
+[2025-05-11T12:29:19.713Z] Résultat de la recherche: 1 lignes trouvées
+[2025-05-11T12:29:19.715Z] Clé publique trouvée, chiffrement de la clé AES
+[2025-05-11T12:29:19.729Z] Clé AES chiffrée avec succès
+[2025-05-11T12:29:19.785Z] Enregistrement sauvegardé en BDD, ID: 1
+[2025-05-11T12:29:19.788Z] === FIN CRÉATION ENREGISTREMENT (RÉUSSI) ===
