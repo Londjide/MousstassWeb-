@@ -1,22 +1,110 @@
 const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
 const path = require('path');
-const db = require('../../db/connexion');
+const fs = require('fs').promises;
+require('dotenv').config();
 
+// Middleware
+const { verifyTokenForPages, auth } = require('./middleware/auth');
 
+// Routes
+const authRoutes = require("./routes/auth.routes");
+const recordingRoutes = require('./routes/recording.routes');
+const userRoutes = require('./routes/user.routes');
+
+// Initialisation de l'application Express
 const app = express();
-const port = 3000;
 
-// Configuration middleware
+// Configuration du moteur de template EJS
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../../frontend/views'));
 
-// app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// Middleware de base
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:"],
+      mediaSrc: ["'self'", "blob:"],
+    },
+  }
+})); // Sécurité avec configuration pour permettre l'audio
+app.use(cors()); // Gestion du CORS
+app.use(express.json()); // Parsing du JSON
+app.use(express.urlencoded({ extended: true })); // Parsing des URL-encoded forms
 
-app.use(express.json());
+// Servir les fichiers statiques
+app.use(express.static(path.join(__dirname, '../../frontend/public')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Exemple de route
-app.get('/', (req, res) => {
-  res.send('API Node.js avec MySQL');
+// Middleware pour les logs de base
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} | ${req.method} ${req.url}`);
+  next();
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Serveur lancé sur le port ${PORT}`));
+// Création des répertoires nécessaires
+(async () => {
+  try {
+    await fs.mkdir(path.join(__dirname, '../uploads'), { recursive: true });
+    await fs.mkdir(path.join(__dirname, '../temp'), { recursive: true });
+  } catch (error) {
+    console.error('Erreur lors de la création des répertoires:', error);
+  }
+})();
+
+// Route racine - Rendu de la vue EJS
+app.get('/', (req, res) => {
+  res.render('index', {
+    title: 'Missié Moustass Web',
+    version: '1.0.0'
+  });
+});
+
+app.get('/profile', (req, res) => {
+  res.render('profile', {
+    title: 'Mon Profil | Missié Moustass Web'
+  });
+});
+
+// Routes pour les pages de vues
+app.get('/recordings', verifyTokenForPages, (req, res) => {
+  const RecordingController = require('./controllers/recording.controller');
+  RecordingController.getRecordingsPage(req, res);
+});
+
+// Routes API
+app.use("/api/auth", authRoutes);
+app.use('/api/recordings', recordingRoutes);
+app.use('/api/users', userRoutes);
+
+app.get('/api/protected', auth, (req, res) => {
+  res.json({ message: 'Tu es authentifié !' });
+});
+
+
+
+// Middleware de gestion des erreurs 404
+app.use((req, res, next) => {
+  res.status(404).render('404', {
+    title: 'Page non trouvée',
+    message: 'La ressource demandée n\'existe pas'
+  });
+});
+
+// Middleware de gestion des erreurs
+app.use((err, req, res, next) => {
+  console.error('Erreur serveur:', err.stack);
+  
+  res.status(err.statusCode || 500).render('error', {
+    title: 'Erreur',
+    message: err.message || 'Erreur serveur interne',
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
+});
+
+module.exports = app;

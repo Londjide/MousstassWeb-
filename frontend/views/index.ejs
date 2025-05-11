@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Styles supprimés car maintenant dans le CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="shortcut icon" href="/assets/images/logo.png">
+    <!-- Empêcher les requêtes vers favicon.png -->
+    <link rel="icon" href="data:,">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Contenu principal de l'application -->
+    <div class="container" id="app-container">
+        <header>
+            <div class="logo">
+                <img src="/assets/images/favicon.svg" alt="Missié Moustass Web Logo">
+                <h1>Missié Moustass Web</h1>
+            </div>
+            <nav id="main-nav">
+                <ul>
+                    <li><a href="/" class="active">Accueil</a></li>
+                    <li><a href="/recordings">Mes Enregistrements</a></li>
+                    <li><a href="/shared">Partagés avec moi</a></li>
+                    <li><a href="/profile" id="profile-link">Mon Profil</a></li>
+                </ul>
+            </nav>
+            <div class="header-user">
+                <div id="user-profile" class="user-profile" style="display: none;">
+                    <span id="user-avatar" class="user-avatar"></span>
+                    <span id="user-name" class="user-name"></span>
+                </div>
+                <button id="logout-btn" class="btn btn-danger" style="display: none;">Déconnexion</button>
+                <button id="login-btn" class="btn btn-primary" style="display: none;">Connexion</button>
+            </div>
+        </header>
+        
+        <main>
+            <section class="hero">
+                <div class="hero-content">
+                    <h1>Enregistrez et partagez vos audios en toute sécurité</h1>
+                    <p>Application web sécurisée avec chiffrement hybride AES/RSA pour protéger vos enregistrements audio</p>
+                    <div class="cta-buttons">
+                        <button id="start-recording" class="btn btn-large btn-primary">Commencer à enregistrer</button>
+                        <button id="explore-button" class="btn btn-large btn-outline">Explorer l'application</button>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="/assets/images/audio-wave.svg" alt="Onde sonore" id="audio-wave">
+                </div>
+            </section>
+            
+            <section class="features">
+                <h2>Fonctionnalités principales</h2>
+                <div class="features-container">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <img src="/assets/images/microphone.svg" alt="Microphone">
+                        </div>
+                        <h3>Enregistrement audio</h3>
+                        <p>Enregistrez facilement vos conversations, notes vocales et idées directement depuis votre navigateur</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <img src="/assets/images/lock.svg" alt="Sécurité">
+                        </div>
+                        <h3>Chiffrement hybride</h3>
+                        <p>Protection avancée avec chiffrement AES-256 pour les fichiers et RSA pour les clés de chiffrement</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <img src="/assets/images/share.svg" alt="Partage">
+                        </div>
+                        <h3>Partage sécurisé</h3>
+                        <p>Partagez vos enregistrements avec d'autres utilisateurs tout en maintenant la confidentialité</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="recording-interface" style="display: none;">
+                <h2>Enregistrement audio</h2>
+                <div class="recording-container">
+                    <div class="recording-controls">
+                        <button id="record-button" class="btn btn-record">
+                            <span class="record-icon"></span>
+                            <span class="record-text">Enregistrer</span>
+                        </button>
+                        <button id="stop-button" class="btn btn-stop" disabled>
+                            <span class="stop-icon"></span>
+                            <span class="stop-text">Arrêter</span>
+                        </button>
+                        <div class="timer">00:00</div>
+                    </div>
+                    <div class="audio-visualizer">
+                        <canvas id="visualizer"></canvas>
+                    </div>
+                    <div class="recording-save" style="display: none;">
+                        <div class="form-group">
+                            <label for="recording-title">Titre de l'enregistrement</label>
+                            <input type="text" id="recording-title" placeholder="Donnez un titre à votre enregistrement">
+                        </div>
+                        <div class="form-group">
+                            <label for="recording-description">Description (optionnel)</label>
+                            <textarea id="recording-description" placeholder="Décrivez votre enregistrement"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button id="save-recording" class="btn btn-primary">Sauvegarder</button>
+                            <button id="cancel-recording" class="btn btn-outline">Annuler</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Authentification -->
+            <section id="auth-section">
+                <!-- Les formulaires de connexion/inscription sont dans les modals -->
+            </section>
+
+            <!-- Section Enregistrements (vide pour l'instant) -->
+            <section id="recordings-section" class="hidden">
+                <div class="recordings-header">
+                    <h2>Mes enregistrements</h2>
+                    <button id="new-recording-btn" class="btn btn-primary">Nouvel enregistrement</button>
+                </div>
+                <div id="recordings-container"></div>
+            </section>
+
+            <!-- Section Enregistreur (vide pour l'instant) -->
+            <section id="recorder-section" class="hidden">
+                <div class="recorder-header">
+                    <h2>Nouvel enregistrement</h2>
+                    <button id="back-to-recordings" class="btn btn-outline">Retour aux enregistrements</button>
+                </div>
+                <div class="recorder-container">
+                    <!-- Contenu ajouté dynamiquement -->
+                </div>
+            </section>
+
+            <!-- Section Lecteur (vide pour l'instant) -->
+            <section id="player-section" class="hidden">
+                <div class="player-header">
+                    <h2>Lecture</h2>
+                    <button id="back-from-player" class="btn btn-outline">Retour aux enregistrements</button>
+                </div>
+                <div class="player-container">
+                    <!-- Contenu ajouté dynamiquement -->
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>&copy; <%= new Date().getFullYear() %> Missié Moustass Web | Version <%= version %></p>
+            <ul class="footer-links">
+                <li><a href="/about">À propos</a></li>
+                <li><a href="/privacy">Confidentialité</a></li>
+                <li><a href="/terms">Conditions d'utilisation</a></li>
+            </ul>
+        </footer>
+    </div>
+    
+    <!-- Modals -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Connexion</h2>
+            <form id="form-login">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Se connecter</button>
+                    <button type="button" id="switch-to-register" class="btn btn-outline">Créer un compte</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Inscription</h2>
+            <form id="form-register">
+
+                <div class="form-group">    
+                    <label for="register-full_name">Nom complet</label>
+                    <input type="text" id="register-full_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-username">Nom d'utilisateur</label>
+                    <input type="text" id="register-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Mot de passe</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm-password">Confirmer le mot de passe</label>
+                    <input type="password" id="register-confirm-password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">S'inscrire</button>
+                    <button type="button" id="switch-to-login" class="btn btn-outline">Déjà inscrit ?</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/utils.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/auth.js"></script>
+    <script src="/assets/js/recording.js"></script>
+    <script src="/assets/js/app.js"></script>
+    <script src="/assets/js/main.js"></script>
+    
+    <!-- Script de diagnostic -->
+    <script>
+        console.log("Application chargée avec configuration complète");
+        
+        // Forcer le chargement complet de l'application
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+            
+            const appContainer = document.getElementById('app-container');
+            if (appContainer) {
+                appContainer.style.display = 'block';
+                appContainer.style.opacity = '1';
+            }
+
+            // CRUCIAL - Synchroniser le token JWT du localStorage vers les cookies
+            const token = localStorage.getItem('moustass_token');
+            if (token) {
+                // Créer un cookie sécurisé avec le token pour les requêtes de page
+                document.cookie = `token=${token}; path=/; SameSite=Strict`;
+                console.log("Token JWT synchronisé du localStorage vers les cookies");
+            } else {
+                console.log("Pas de token JWT trouvé dans localStorage");
+            }
+        });
+    </script>
+</body>
+</html>
+
+<style>
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.user-profile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #4a6fa5;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  overflow: hidden;
+}
+.profile-pic {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.profile-initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  background: #4a6fa5;
+  color: #fff;
+}
+</style> 

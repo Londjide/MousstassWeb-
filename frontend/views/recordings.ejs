@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Enregistrements | Missié Moustass Web</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Écran de chargement -->
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <p>Chargement de l'application...</p>
+    </div>
+
+    <div class="container" id="app-container">
+        <header>
+            <div class="logo">
+                <img src="/assets/images/favicon.svg" alt="Missié Moustass Web Logo">
+                <h1>Missié Moustass Web</h1>
+            </div>
+            <nav id="main-nav">
+                <ul>
+                    <li><a href="/">Accueil</a></li>
+                    <li><a href="/recordings" class="active">Mes Enregistrements</a></li>
+                    <li><a href="/shared">Partagés avec moi</a></li>
+                    <li><a href="/profile" id="profile-link">Mon Profil</a></li>
+                </ul>
+            </nav>
+            <div class="auth-buttons">
+                <button id="login-btn" class="btn btn-primary">Connexion</button>
+                <button id="register-btn" class="btn btn-outline">Inscription</button>
+                <button id="logout-btn" class="btn btn-danger" style="display: none;">Déconnexion</button>
+            </div>
+        </header>
+        
+        <main>
+            <!-- Section Enregistreur (vide pour l'instant) -->
+            <section id="recorder-section" class="hidden"></section>
+
+            <!-- Section Lecteur (vide pour l'instant) -->
+            <section id="player-section" class="hidden"></section>
+
+            <section id="recordings-section">
+                <div class="recordings-header">
+                    <h1>Mes Enregistrements</h1>
+                    <button id="new-recording-btn" class="btn btn-primary">
+                        <img src="/assets/images/microphone.svg" alt="Microphone" class="btn-icon"> 
+                        Nouvel enregistrement
+                    </button>
+                </div>
+                
+                <section class="recordings-filters">
+                    <div class="search-container">
+                        <input type="text" id="search-input" placeholder="Rechercher un enregistrement...">
+                        <button id="search-button" class="btn btn-primary">Rechercher</button>
+                    </div>
+                    <div class="filter-container">
+                        <select id="sort-select">
+                            <option value="date-desc">Date (plus récent)</option>
+                            <option value="date-asc">Date (plus ancien)</option>
+                            <option value="title-asc">Titre (A-Z)</option>
+                            <option value="title-desc">Titre (Z-A)</option>
+                            <option value="duration-desc">Durée (plus longue)</option>
+                            <option value="duration-asc">Durée (plus courte)</option>
+                        </select>
+                    </div>
+                </section>
+                
+                <section id="recordings-container" class="recordings-list">
+                    <% if (recordings && recordings.length > 0) { %>
+                        <% recordings.forEach(recording => { %>
+                            <div class="recording-card">
+                                <div class="recording-info">
+                                    <h3 class="recording-title"><%= recording.name %></h3>
+                                    <p class="recording-description"><%= recording.description || 'Pas de description' %></p>
+                                    <div class="recording-meta">
+                                        <span class="recording-date">
+                                            <%= new Date(recording.timestamp).toLocaleDateString('fr-FR', { 
+                                                day: 'numeric', 
+                                                month: 'long', 
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }) %>
+                                        </span>
+                                        <span class="recording-duration">
+                                            <%= Math.floor(recording.duration / 60) %>:<%= (recording.duration % 60).toString().padStart(2, '0') %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="recording-actions">
+                                    <button class="btn btn-icon play-btn" data-id="<%= recording.id %>">
+                                        <img src="/assets/images/play.svg" alt="Lecture">
+                                    </button>
+                                    <button class="btn btn-icon share-btn" data-id="<%= recording.id %>">
+                                        <img src="/assets/images/share.svg" alt="Partager">
+                                    </button>
+                                    <button class="btn btn-icon edit-btn" data-id="<%= recording.id %>">
+                                        <img src="/assets/images/edit.svg" alt="Éditer">
+                                    </button>
+                                    <button class="btn btn-icon delete-btn" data-id="<%= recording.id %>">
+                                        <img src="/assets/images/trash.svg" alt="Supprimer">
+                                    </button>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div class="empty-state">
+                            <img src="/assets/images/empty-recordings.svg" alt="Aucun enregistrement" class="empty-state-image">
+                            <h3>Aucun enregistrement trouvé</h3>
+                            <p>Commencez à enregistrer dès maintenant pour sécuriser vos conversations.</p>
+                            <button id="empty-state-record-btn" class="btn btn-primary">Créer un enregistrement</button>
+                        </div>
+                    <% } %>
+                </section>
+                
+                <% if (recordings && recordings.length > 0 && totalPages > 1) { %>
+                    <section class="pagination">
+                        <% if (currentPage > 1) { %>
+                            <a href="/recordings?page=<%= currentPage - 1 %>" class="pagination-link">&laquo; Précédent</a>
+                        <% } %>
+                        
+                        <% for (let i = 1; i <= totalPages; i++) { %>
+                            <a href="/recordings?page=<%= i %>" class="pagination-link <%= i === currentPage ? 'active' : '' %>"><%= i %></a>
+                        <% } %>
+                        
+                        <% if (currentPage < totalPages) { %>
+                            <a href="/recordings?page=<%= currentPage + 1 %>" class="pagination-link">Suivant &raquo;</a>
+                        <% } %>
+                    </section>
+                <% } %>
+            </section>
+        </main>
+        
+        <footer>
+            <p>&copy; <%= new Date().getFullYear() %> Missié Moustass Web | Version <%= version %></p>
+            <ul class="footer-links">
+                <li><a href="/about">À propos</a></li>
+                <li><a href="/privacy">Confidentialité</a></li>
+                <li><a href="/terms">Conditions d'utilisation</a></li>
+            </ul>
+        </footer>
+    </div>
+    
+    <!-- Modal de partage -->
+    <div id="share-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Partager l'enregistrement</h2>
+            <form id="share-form">
+                <input type="hidden" id="recording-id">
+                <div class="form-group">
+                    <label for="recipient-email">Email du destinataire</label>
+                    <input type="email" id="recipient-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="share-permissions">Permissions</label>
+                    <select id="share-permissions">
+                        <option value="read">Lecture seule</option>
+                        <option value="read_write">Lecture et modification</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Partager</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de lecture -->
+    <div id="player-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="player-title">Titre de l'enregistrement</h2>
+            <div class="audio-player">
+                <audio id="audio-player" controls></audio>
+            </div>
+            <div class="player-info">
+                <p id="player-description">Description de l'enregistrement</p>
+                <p id="player-date">Date d'enregistrement</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de confirmation de suppression -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Confirmer la suppression</h2>
+            <p>Êtes-vous sûr de vouloir supprimer cet enregistrement ? Cette action est irréversible.</p>
+            <div class="form-actions">
+                <button id="confirm-delete" class="btn btn-danger">Supprimer</button>
+                <button id="cancel-delete" class="btn btn-outline">Annuler</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/utils.js"></script>
+    <script src="/assets/js/auth.js"></script>
+    <script src="/assets/js/recordings.js"></script>
+    <script src="/assets/js/main.js"></script>
+    
+    <!-- Script d'initialisation du thème -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser le thème global
+            if (utils && utils.initGlobalTheme) {
+                utils.initGlobalTheme();
+            }
+
+            // CRUCIAL - Synchroniser le token JWT du localStorage vers les cookies
+            const token = localStorage.getItem('moustass_token');
+            if (token) {
+                // Créer un cookie sécurisé avec le token pour les requêtes de page
+                document.cookie = `token=${token}; path=/; SameSite=Strict`;
+            }
+        });
+    </script>
+</body>
+</html> 
