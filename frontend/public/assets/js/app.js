@@ -155,7 +155,7 @@ class App {
           emptyNewRecordingBtn.addEventListener('click', this.showRecorderSection.bind(this));
         }
         
-        return;
+            return;
       }
       
       // Afficher les enregistrements
@@ -229,4 +229,4 @@ document.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem(config.tokenKey)) {
     app.loadRecordings();
   }
-});
+  });

@@ -69,6 +69,9 @@ router.put(
   PreferenceController.updatePreferences
 );
 
+// Récupérer un utilisateur par email
+router.get('/by-email', UserController.getByEmail);
+
 /**
  * @route GET /api/users/:id
  * @desc Récupère un utilisateur par son ID

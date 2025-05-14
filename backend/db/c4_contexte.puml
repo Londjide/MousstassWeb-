@@ -1,0 +1,11 @@
+@startuml
+!define C4P https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master
+!includeurl C4P/C4_Context.puml
+
+Person(user, "Utilisateur", "Utilise l'application pour gérer ses enregistrements et données financières")
+System_Boundary(s1, "MousstassWeb") {
+  System(webapp, "MousstassWeb", "Application web de gestion d'enregistrements audio et de données financières")
+}
+
+Rel(user, webapp, "Utilise via navigateur")
+@enduml  

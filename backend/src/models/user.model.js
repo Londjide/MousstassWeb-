@@ -66,25 +66,43 @@ class User {
    * @returns {Promise<Object|null>} Utilisateur si authentifié, null sinon
    */
   static async authenticate(email, password) {
-    const [rows] = await db.query(
-      'SELECT id, email, username, full_name, password_hash, is_admin FROM users WHERE email = ?',
-      [email]
-    );
+    console.log(`Tentative d'authentification pour l'email: ${email}`);
+    
+    try {
+      const [rows] = await db.query(
+        'SELECT id, email, username, full_name, password_hash, is_admin FROM users WHERE email = ?',
+        [email]
+      );
 
-    if (rows.length === 0) {
-      return null;
+      console.log(`Résultat de la recherche: ${rows.length} utilisateur(s) trouvé(s)`);
+
+      if (rows.length === 0) {
+        console.log(`Aucun utilisateur trouvé avec l'email: ${email}`);
+        return null;
+      }
+
+      const user = rows[0];
+      console.log(`Utilisateur trouvé: ${user.email}, vérification du mot de passe...`);
+      
+      if (!user.password_hash) {
+        console.log(`ERREUR: Utilisateur sans hash de mot de passe: ${user.email}`);
+        return null;
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+      console.log(`Vérification du mot de passe: ${isPasswordValid ? 'Succès' : 'Échec'}`);
+
+      if (!isPasswordValid) {
+        return null;
+      }
+
+      // Ne pas retourner le hash du mot de passe
+      delete user.password_hash;
+      return user;
+    } catch (error) {
+      console.error('Erreur lors de l\'authentification:', error);
+      throw error;
     }
-
-    const user = rows[0];
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-
-    if (!isPasswordValid) {
-      return null;
-    }
-
-    // Ne pas retourner le hash du mot de passe
-    delete user.password_hash;
-    return user;
   }
 
   /**
@@ -171,7 +189,7 @@ class User {
    */
   static async getPreferences(userId) {
     try {
-      const query = `
+    const query = `
         SELECT preferences FROM users WHERE id = ?
       `;
       const [rows] = await db.execute(query, [userId]);
@@ -236,7 +254,7 @@ class User {
       };
       
       // Mettre à jour les préférences
-      const query = `
+    const query = `
         UPDATE users SET preferences = ? WHERE id = ?
       `;
       

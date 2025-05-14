@@ -3,10 +3,12 @@ const helmet = require('helmet');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Middleware
 const { verifyTokenForPages, auth } = require('./middleware/auth');
+const RecordingController = require('./controllers/recording.controller');
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
@@ -36,6 +38,7 @@ app.use(helmet({
 app.use(cors()); // Gestion du CORS
 app.use(express.json()); // Parsing du JSON
 app.use(express.urlencoded({ extended: true })); // Parsing des URL-encoded forms
+app.use(cookieParser());
 
 // Servir les fichiers statiques
 app.use(express.static(path.join(__dirname, '../../frontend/public')));
@@ -73,8 +76,19 @@ app.get('/profile', (req, res) => {
 
 // Routes pour les pages de vues
 app.get('/recordings', verifyTokenForPages, (req, res) => {
-  const RecordingController = require('./controllers/recording.controller');
   RecordingController.getRecordingsPage(req, res);
+});
+
+// Page des enregistrements partagés avec moi (sécurisée)
+app.get('/shared', verifyTokenForPages, (req, res) => {
+  res.render('shared', {
+    title: 'Enregistrements partagés avec moi'
+  });
+});
+
+// Route de page pour l'édition d'un enregistrement
+app.get('/recordings/:id/edit', verifyTokenForPages, (req, res) => {
+  RecordingController.getEditPage(req, res);
 });
 
 // Routes API
@@ -85,8 +99,6 @@ app.use('/api/users', userRoutes);
 app.get('/api/protected', auth, (req, res) => {
   res.json({ message: 'Tu es authentifié !' });
 });
-
-
 
 // Middleware de gestion des erreurs 404
 app.use((req, res, next) => {

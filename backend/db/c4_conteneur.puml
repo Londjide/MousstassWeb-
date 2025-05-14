@@ -1,0 +1,17 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(user, "Utilisateur", "Utilise l'application via le navigateur")
+
+System_Boundary(s1, "MousstassWeb") {
+  Container(web, "Frontend", "EJS/HTML/CSS/JS", "Interface utilisateur")
+  Container(api, "Backend API", "Node.js/Express", "API REST pour la gestion des utilisateurs, enregistrements, audio, finances")
+  ContainerDb(db, "Base de données", "MySQL", "Stocke utilisateurs, enregistrements, audio, finances")
+  Container(upload, "Stockage fichiers", "FS", "Stocke les fichiers audio chiffrés")
+}
+
+Rel(user, web, "Utilise via navigateur")
+Rel(web, api, "Appels HTTP/REST")
+Rel(api, db, "Requêtes SQL")
+Rel(api, upload, "Lecture/écriture fichiers audio")
+@enduml 

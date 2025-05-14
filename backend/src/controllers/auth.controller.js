@@ -79,22 +79,43 @@ const AuthController = {
    */
   login: async (req, res) => {
     try {
+      console.log('Tentative de connexion avec les données:', JSON.stringify(req.body));
+      
       // Validation des données
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        console.log('Erreurs de validation:', JSON.stringify(errors.array()));
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Données invalides',
+          errors: errors.array()
+        });
       }
 
       const { email, password } = req.body;
+      
+      if (!email || !password) {
+        console.log('Email ou mot de passe manquant');
+        return res.status(400).json({
+          success: false,
+          message: 'Email et mot de passe requis'
+        });
+      }
 
+      console.log(`Tentative d'authentification pour l'email: ${email}`);
+      
       // Vérifier les identifiants
       const user = await UserModel.authenticate(email, password);
+      
       if (!user) {
+        console.log(`Échec d'authentification pour l'email: ${email}`);
         return res.status(401).json({ 
           success: false,
           message: 'Email ou mot de passe incorrect' 
         });
       }
+
+      console.log(`Authentification réussie pour l'utilisateur: ${user.email}`);
 
       // Vérifier que JWT_SECRET est défini
       if (!process.env.JWT_SECRET) {
@@ -111,16 +132,29 @@ const AuthController = {
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
+      
+      console.log(`Token généré pour l'utilisateur: ${user.email}`);
+
+      // Journaliser la connexion réussie
+      try {
+        await AccessLogModel.create({
+          user_id: user.id,
+          action: 'LOGIN',
+          ip_address: req.ip,
+          user_agent: req.headers['user-agent'],
+          success: true
+        });
+      } catch (logError) {
+        console.error('Erreur lors de la journalisation de la connexion:', logError);
+        // Ne pas bloquer l'authentification en cas d'erreur de journalisation
+      }
 
       res.json({
         success: true,
         message: 'Connexion réussie',
         user: {
-          // id: user.id,
-          // email: user.email,
           username: user.username,
           full_name: user.full_name,
-          // is_admin: user.is_admin
         },
         token
       });
@@ -128,7 +162,7 @@ const AuthController = {
       console.error('Erreur lors de la connexion:', error);
       res.status(500).json({ 
         success: false,
-        message: 'Erreur lors de la connexion' 
+        message: 'Erreur serveur lors de la connexion' 
       });
     }
   },

@@ -1,0 +1,74 @@
+@startuml
+!define table(x) class x as "x" << (T,#FFAAAA) >>
+
+' Tables
+
+table(users) {
+  +id : INT
+  email : VARCHAR
+  password_hash : VARCHAR
+  salt : VARCHAR
+  username : VARCHAR
+  full_name : VARCHAR
+  is_admin : BOOLEAN
+  created_at : DATETIME
+  photo_url : VARCHAR
+  preferences : JSON
+}
+
+table(user_keys) {
+  +user_id : INT
+  public_key : TEXT
+  private_key : TEXT
+}
+
+table(recordings) {
+  +id : INT
+  name : VARCHAR
+  file_path : VARCHAR
+  timestamp : DATETIME
+  duration : INT
+  user_id : INT
+  encryption_key : TEXT
+  description : TEXT
+}
+
+table(shared_recordings) {
+  +id : INT
+  recording_id : INT
+  source_user_id : INT
+  target_user_id : INT
+  encryption_key : TEXT
+}
+
+table(audio_records) {
+  +id : INT
+  user_id : INT
+  filename : VARCHAR
+  encrypted_data : LONGBLOB
+  hash_verification : VARCHAR
+  description : TEXT
+  duration_seconds : INT
+  created_at : DATETIME
+}
+
+table(financial_data) {
+  +id : INT
+  user_id : INT
+  data_type : VARCHAR
+  encrypted_content : LONGBLOB
+  hash_verification : VARCHAR
+  notes : TEXT
+  created_at : DATETIME
+  modified_at : DATETIME
+}
+
+' Relations
+users -- user_keys : "1" -- "1"
+users -- recordings : "1" -- "*"
+users -- audio_records : "1" -- "*"
+users -- financial_data : "1" -- "*"
+recordings -- shared_recordings : "1" -- "*"
+users -- shared_recordings : "1" -- "*" : source_user_id
+users -- shared_recordings : "1" -- "*" : target_user_id
+@enduml 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const RecordingController = require('../controllers/recording.controller');
-const { auth } = require('../middleware/auth');
+const { auth, verifyTokenForPages } = require('../middleware/auth');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
@@ -11,11 +11,14 @@ const upload = multer({ dest: 'uploads/' });
 // Récupérer tous les enregistrements de l'utilisateur
 router.get('/', auth, RecordingController.getAll);
 
+// Récupérer les enregistrements partagés avec l'utilisateur
+router.get('/shared', auth, RecordingController.getSharedWithMe);
+
 // Récupérer un enregistrement spécifique
 router.get('/:id', auth, RecordingController.getOne);
 
 // Récupérer l'audio d'un enregistrement (stream)
-router.get('/:id/stream', auth, RecordingController.stream);
+router.get('/:id/stream', verifyTokenForPages, RecordingController.stream);
 
 // Créer un nouvel enregistrement (simulé pour le moment)
 router.post('/', auth, RecordingController.create);

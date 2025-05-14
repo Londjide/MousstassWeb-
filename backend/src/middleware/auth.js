@@ -7,45 +7,26 @@ const jwt = require('jsonwebtoken');
  * @param {function} next - Fonction next Express
  */
 const auth = (req, res, next) => {
+  console.log('[auth] Middleware appelé pour', req.originalUrl);
+  let token = req.cookies && (req.cookies.token || req.cookies.moustass_token);
+  if (!token && req.headers.authorization) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
+  if (!token) {
+    console.log('[auth] Token non trouvé');
+    return res.status(401).json({ success: false, message: 'Token non trouvé, accès refusé.' });
+  }
   try {
-    // Récupérer le token depuis les headers
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Accès non autorisé: token manquant'
-      });
-    }
-    
-    // Vérifier que JWT_SECRET est défini
-    if (!process.env.JWT_SECRET) {
-      console.error('Erreur critique: JWT_SECRET n\'est pas défini dans les variables d\'environnement');
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur de configuration du serveur'
-      });
-    }
-    
-    // Vérifier le token
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-      next();
-    } catch (jwtError) {
-      console.error('Erreur lors de la vérification JWT:', jwtError.name, jwtError.message);
-      
-      return res.status(401).json({
-        success: false,
-        message: 'Accès non autorisé: token invalide ou expiré'
-      });
-    }
-  } catch (error) {
-    console.error('Erreur d\'authentification générale:', error);
-    return res.status(401).json({
-      success: false,
-      message: 'Accès non autorisé: erreur d\'authentification'
-    });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    console.log('[auth] Token valide pour user', decoded.id);
+    next();
+  } catch (err) {
+    console.log('[auth] Erreur de vérification du token:', err.message);
+    return res.status(401).json({ success: false, message: 'Token invalide.' });
   }
 };
 
@@ -56,7 +37,7 @@ const auth = (req, res, next) => {
 const verifyTokenForPages = (req, res, next) => {
   try {
     // Récupérer le token depuis les cookies
-    let token = req.cookies && req.cookies.token;
+    let token = req.cookies && (req.cookies.token || req.cookies.moustass_token);
     
     // Vérifier ensuite l'en-tête Authorization (Bearer token)
     if (!token && req.headers.authorization) {

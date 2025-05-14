@@ -4,6 +4,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Synchroniser le token du localStorage vers le cookie 'moustass_token' pour l'accès backend
+  const jwt = localStorage.getItem('moustass_token');
+  if (jwt) {
+    document.cookie = `moustass_token=${jwt}; path=/;`;
+  }
+  
   // Initialiser le thème global
   if (utils && utils.initGlobalTheme) {
     utils.initGlobalTheme();

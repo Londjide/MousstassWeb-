@@ -1,3 +1,5 @@
+console.log('[UserController] Chargé');
+
 const { validationResult } = require('express-validator');
 const UserModel = require('../models/user.model');
 const AccessLogModel = require('../models/accesslog.model');
@@ -243,6 +245,40 @@ const UserController = {
       res.json(user);
     } catch (error) {
       res.status(500).json({ message: 'Erreur serveur', error: error.message });
+    }
+  },
+  
+  /**
+   * Récupère un utilisateur par email (pour le partage)
+   * @route GET /api/users/by-email?email=...
+   */
+  getByEmail: async (req, res) => {
+    console.log('[getByEmail] Début fonction');
+    try {
+      const email = req.query.email;
+      console.log('[getByEmail] email reçu:', email);
+      if (!email) {
+        return res.status(400).json({ success: false, message: "Email requis." });
+      }
+      const result = await db.query('SELECT id, email, username, full_name FROM users WHERE email = ?', [email]);
+      console.log('[getByEmail] Résultat SQL brut:', result);
+      if (!Array.isArray(result) || result.length === 0) {
+        console.error('[getByEmail] Résultat SQL non conforme:', result);
+        return res.status(500).json({ success: false, message: "Erreur interne : résultat SQL inattendu." });
+      }
+      const users = result[0];
+      console.log('[getByEmail] users:', users);
+      if (!Array.isArray(users)) {
+        console.error('[getByEmail] users n\'est pas un tableau:', users);
+        return res.status(500).json({ success: false, message: "Erreur interne : users n'est pas un tableau." });
+      }
+      if (users.length === 0) {
+        return res.status(404).json({ success: false, message: "Aucun utilisateur trouvé avec cet email." });
+      }
+      res.json({ success: true, user: users[0] });
+    } catch (error) {
+      console.error('[getByEmail] Erreur lors de la recherche utilisateur par email:', error);
+      res.status(500).json({ success: false, message: "Erreur serveur lors de la recherche utilisateur.", error: error.message });
     }
   }
 };

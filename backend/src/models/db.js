@@ -88,6 +88,12 @@ const initDatabase = async () => {
     const connection = await getConnection();
     
     try {
+      // Désactiver les contraintes de clé étrangère pour permettre la suppression des tables dans n'importe quel ordre
+      await connection.query('SET FOREIGN_KEY_CHECKS = 0;');
+      
+      // Supprimer manuellement les tables qui posent problème
+      await connection.query('DROP TABLE IF EXISTS audio_records;');
+      
       const statements = initScript
         .split(';')
         .filter(stmt => stmt.trim() !== '');
@@ -95,6 +101,9 @@ const initDatabase = async () => {
       for (const stmt of statements) {
         await connection.query(stmt + ';');
       }
+      
+      // Réactiver les contraintes de clé étrangère
+      await connection.query('SET FOREIGN_KEY_CHECKS = 1;');
       
       console.log('Base de données initialisée avec succès.');
       return true;

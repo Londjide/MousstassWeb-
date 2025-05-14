@@ -30,7 +30,7 @@ const RecordingController = {
         });
       }
 
-      const { name } = req.body;
+      const { name, description } = req.body;
       const duration = parseInt(req.body.duration) || 0;
       const userId = req.user.id;
       
@@ -39,7 +39,7 @@ const RecordingController = {
       
       // Créer l'enregistrement
       const recording = await Recording.create(
-        { name, userId, duration },
+        { name, userId, duration, description },
         audioBuffer
       );
       
@@ -189,44 +189,89 @@ const RecordingController = {
    */
   delete: async (req, res) => {
     try {
+      const recordingId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const success = await Recording.delete(recordingId, userId);
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: "Enregistrement non trouvé ou vous n'êtes pas le propriétaire."
+        });
+      }
       res.json({
         success: true,
-        message: 'Fonctionnalité de suppression non implémentée pour le moment'
+        message: 'Enregistrement supprimé avec succès.'
       });
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'enregistrement:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        message: 'Erreur lors de la suppression de l\'enregistrement' 
+        message: 'Erreur lors de la suppression de l\'enregistrement.'
       });
     }
   },
 
   /**
    * Partage un enregistrement avec un autre utilisateur
-   * @param {Object} req - Requête Express
-   * @param {Object} res - Réponse Express
+   * @route POST /api/recordings/:id/share
    */
   share: async (req, res) => {
     try {
-      res.json({
-        success: true,
-        message: 'Fonctionnalité de partage non implémentée pour le moment'
-      });
+      const recordingId = parseInt(req.params.id);
+      const sourceUserId = req.user.id;
+      const { target_user_id } = req.body;
+      if (!target_user_id) {
+        return res.status(400).json({ success: false, message: "ID du destinataire requis." });
+      }
+      const success = await Recording.share(recordingId, sourceUserId, target_user_id);
+      if (!success) {
+        return res.status(400).json({ success: false, message: "Partage impossible (droits ou utilisateur inexistant)." });
+      }
+      res.json({ success: true, message: "Enregistrement partagé avec succès." });
     } catch (error) {
       console.error('Erreur lors du partage de l\'enregistrement:', error);
-      res.status(500).json({ 
-        success: false,
-        message: 'Erreur lors du partage de l\'enregistrement' 
-      });
+      res.status(500).json({ success: false, message: "Erreur lors du partage de l'enregistrement." });
     }
   },
 
   /**
-   * Streaming d'un enregistrement audio (non implémenté)
+   * Streaming d'un enregistrement audio
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
    */
   stream: async (req, res) => {
-    res.status(501).json({ success: false, message: 'Streaming non implémenté' });
+    try {
+      const recordingId = parseInt(req.params.id);
+      const userId = req.user.id;
+      // Récupérer l'enregistrement et vérifier l'accès
+      const recording = await Recording.findById(recordingId, userId);
+      if (!recording) {
+        return res.status(404).json({
+          success: false,
+          message: 'Enregistrement non trouvé ou accès non autorisé'
+        });
+      }
+      // Récupérer la clé privée de l'utilisateur
+      const privateKey = await User.getPrivateKey(userId);
+      if (!privateKey) {
+        return res.status(500).json({
+          success: false,
+          message: 'Clé privée introuvable'
+        });
+      }
+      // Déchiffrer le contenu audio
+      const audioData = await Recording.getAudioContent(recording, privateKey);
+      // Déterminer le type MIME (par défaut webm)
+      res.set('Content-Type', 'audio/webm');
+      res.set('Content-Disposition', `inline; filename="${recording.name || 'audio'}.webm"`);
+      res.send(audioData);
+    } catch (error) {
+      console.error('Erreur lors du streaming audio:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors du streaming audio'
+      });
+    }
   },
 
   /**
@@ -270,44 +315,34 @@ const RecordingController = {
     }
   },
 
-  /**
-   * Affiche la page d'édition d'un enregistrement
-   * @param {Request} req - Requête Express
-   * @param {Response} res - Réponse Express
-   */
-  getEditPage: async (req, res) => {
+  getSharedWithMe: async (req, res) => {
     try {
       const userId = req.user.id;
-      const recordingId = req.params.id;
+      console.log(`[getSharedWithMe] Récupération des partages pour l'utilisateur ${userId}`);
+      // Récupérer tous les enregistrements partagés avec cet utilisateur, même ceux dont il est propriétaire
+      const [rows] = await db.query(`
+        SELECT r.id, r.name, r.description, r.timestamp, r.duration,
+               u.id AS owner_id, u.email AS owner_email, u.full_name AS owner_name, u.photo_url AS owner_avatar,
+               s.permissions, s.shared_date AS shared_at
+        FROM shared_recordings s
+        JOIN recordings r ON s.recording_id = r.id
+        JOIN users u ON r.user_id = u.id
+        WHERE s.target_user_id = ?
+        ORDER BY s.shared_date DESC
+      `, [userId]);
       
-      // Récupérer l'enregistrement
-      const [recordings] = await db.query(
-        'SELECT * FROM recordings WHERE id = ? AND user_id = ?',
-        [recordingId, userId]
-      );
+      console.log(`[getSharedWithMe] ${rows.length} enregistrements partagés trouvés`);
       
-      if (recordings.length === 0) {
-        return res.status(404).render('404', {
-          title: 'Enregistrement introuvable',
-          message: "L'enregistrement demandé n'existe pas ou vous n'avez pas les droits pour y accéder."
-        });
-      }
+      // Si le owner_name est null, utiliser la partie locale de l'email
+      const sharedWithFormattedNames = rows.map(row => ({
+        ...row,
+        owner_name: row.owner_name || row.owner_email.split('@')[0]
+      }));
       
-      const recording = recordings[0];
-      
-      // Rendre la vue avec les données
-      res.render('edit-recording', {
-        title: `Éditer - ${recording.title}`,
-        version: '1.0.0',
-        recording
-      });
+      res.json({ success: true, shared: sharedWithFormattedNames });
     } catch (error) {
-      console.error('Erreur lors de la récupération de l\'enregistrement:', error);
-      res.status(500).render('error', {
-        title: 'Erreur',
-        message: 'Une erreur est survenue lors de la récupération de l\'enregistrement.',
-        error: process.env.NODE_ENV === 'development' ? error : {}
-      });
+      console.error('[getSharedWithMe] Erreur:', error);
+      res.status(500).json({ success: false, message: "Erreur lors de la récupération des enregistrements partagés." });
     }
   }
 };

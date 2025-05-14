@@ -321,16 +321,16 @@ async function initProfileForm() {
  * Initialise le formulaire de mot de passe
  */
 function initPasswordForm() {
-  const passwordForm = document.getElementById('password-form');
+      const passwordForm = document.getElementById('password-form');
   const currentPasswordInput = document.getElementById('current-password');
   const newPasswordInput = document.getElementById('new-password');
   const confirmPasswordInput = document.getElementById('confirm-password');
   const strengthBar = document.getElementById('password-strength-bar');
   const strengthText = document.getElementById('password-strength-text');
   const statusMessage = document.getElementById('password-status');
-  
-  if (!passwordForm) return;
-  
+      
+      if (!passwordForm) return;
+      
   // Évaluer la force du mot de passe
   if (newPasswordInput && strengthBar && strengthText) {
     newPasswordInput.addEventListener('input', () => {
@@ -344,9 +344,9 @@ function initPasswordForm() {
   }
   
   // Gérer la soumission du formulaire
-  passwordForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
+      passwordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
     const currentPassword = currentPasswordInput.value;
     const newPassword = newPasswordInput.value;
     const confirmPassword = confirmPasswordInput.value;
@@ -361,30 +361,30 @@ function initPasswordForm() {
     // Vérifier que les mots de passe correspondent
     if (newPassword !== confirmPassword) {
       showStatus(statusMessage, 'Les mots de passe ne correspondent pas', 'error');
-      return;
-    }
-    
+            return;
+          }
+          
     // Vérifier la force du mot de passe
     const strength = evaluatePasswordStrength(newPassword);
     if (strength.score < 2) {
       showStatus(statusMessage, 'Le mot de passe est trop faible', 'error');
-      return;
-    }
-    
+            return;
+          }
+          
     try {
       // Changer le mot de passe
       const result = await profileService.changePassword(currentPassword, newPassword);
-      
+          
       // Réinitialiser le formulaire
-      passwordForm.reset();
-      
+          passwordForm.reset();
+          
       // Afficher un message de succès avec le message retourné par l'API
       showStatus(statusMessage, result.message || 'Mot de passe changé avec succès', 'success');
       
       // Réinitialiser la barre de force
       if (strengthBar) strengthBar.style.width = '0%';
       if (strengthText) strengthText.textContent = 'Force du mot de passe';
-    } catch (error) {
+        } catch (error) {
       showStatus(statusMessage, error.message || 'Erreur lors du changement de mot de passe', 'error');
     }
   });
@@ -422,7 +422,7 @@ function initPreferencesForm() {
       if (preference === 'dark_mode') {
         if (value) {
           document.body.classList.add('dark-mode');
-        } else {
+            } else {
           document.body.classList.remove('dark-mode');
         }
       }

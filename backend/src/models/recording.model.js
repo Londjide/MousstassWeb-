@@ -14,7 +14,7 @@ class Recording {
    * @returns {Promise<Object>} Enregistrement créé
    */
   static async create(recordingData, audioBuffer) {
-    const { name, userId, duration } = recordingData;
+    const { name, userId, duration, description } = recordingData;
     const timestamp = new Date();
     
     // Génération d'une clé AES pour chiffrer l'enregistrement
@@ -67,8 +67,8 @@ class Recording {
     
     // Sauvegarde en base de données
     const [result] = await db.query(
-      'INSERT INTO recordings (name, file_path, timestamp, duration, user_id, encryption_key) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, fileName, timestamp, duration, userId, encryptedKey]
+      'INSERT INTO recordings (name, file_path, timestamp, duration, user_id, encryption_key, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, fileName, timestamp, duration, userId, encryptedKey, description || null]
     );
     
     return {
@@ -76,7 +76,8 @@ class Recording {
       name,
       timestamp,
       duration,
-      userId
+      userId,
+      description: description || null
     };
   }
 
@@ -120,14 +121,14 @@ class Recording {
    * @returns {Promise<Buffer>} Données audio déchiffrées
    */
   static async getAudioContent(recording, privateKey) {
-    // Lecture du fichier chiffré
+    // Lecture du fichier chiffré (binaire)
     const filePath = path.join(__dirname, '../../uploads', recording.file_path);
-    const fileData = await fs.readFile(filePath, 'utf8');
-    
+    const fileData = await fs.readFile(filePath); // pas d'encodage
     // Extraction de l'IV et des données chiffrées
-    const [ivHex, encryptedData] = fileData.split('\n');
+    const newlineIndex = fileData.indexOf(0x0A); // 0x0A = '\n'
+    const ivHex = fileData.slice(0, newlineIndex).toString();
     const iv = Buffer.from(ivHex, 'hex');
-    
+    const encryptedData = fileData.slice(newlineIndex + 1);
     // Déchiffrement de la clé AES avec la clé privée
     const encryptedKey = recording.proper_key;
     const aesKey = crypto.privateDecrypt(
@@ -137,37 +138,28 @@ class Recording {
       },
       Buffer.from(encryptedKey, 'base64')
     );
-    
     // Déchiffrement des données audio
     const decipher = crypto.createDecipheriv('aes-256-cbc', aesKey, iv);
     const decryptedData = Buffer.concat([
-      decipher.update(Buffer.from(encryptedData, 'binary')),
+      decipher.update(encryptedData),
       decipher.final()
     ]);
-    
     return decryptedData;
   }
 
   /**
-   * Liste les enregistrements d'un utilisateur
+   * Liste les enregistrements DONT l'utilisateur est propriétaire
    * @param {number} userId ID de l'utilisateur
    * @returns {Promise<Array>} Liste des enregistrements
    */
   static async findByUserId(userId) {
     const [rows] = await db.query(
-      `SELECT r.id, r.name, r.timestamp, r.duration, r.user_id, 
-        CASE WHEN r.user_id = ? THEN 'owned' ELSE 'shared' END AS type
+      `SELECT r.id, r.name, r.timestamp, r.duration, r.user_id, r.description
       FROM recordings r
       WHERE r.user_id = ?
-      UNION
-      SELECT r.id, r.name, r.timestamp, r.duration, r.user_id, 'shared' AS type
-      FROM recordings r
-      INNER JOIN shared_recordings sr ON r.id = sr.recording_id
-      WHERE sr.target_user_id = ?
-      ORDER BY timestamp DESC`,
-      [userId, userId, userId]
+      ORDER BY r.timestamp DESC`,
+      [userId]
     );
-    
     return rows;
   }
 
@@ -197,6 +189,9 @@ class Recording {
       console.error(`Erreur lors de la suppression du fichier ${filePath}:`, error);
     }
     
+    // Supprimer d'abord les partages associés
+    await db.query('DELETE FROM shared_recordings WHERE recording_id = ?', [id]);
+    
     // Supprimer l'enregistrement de la BDD
     await db.query('DELETE FROM recordings WHERE id = ?', [id]);
     
@@ -206,40 +201,45 @@ class Recording {
   /**
    * Partage un enregistrement avec un autre utilisateur
    * @param {number} recordingId ID de l'enregistrement à partager
-   * @param {number} sourceUserId ID de l'utilisateur qui partage
-   * @param {number} targetUserId ID de l'utilisateur qui reçoit
+   * @param {number} sourceUserId ID du propriétaire
+   * @param {number} targetUserId ID du destinataire
+   * @param {string} permissions Permissions accordées ('read' ou 'edit')
    * @returns {Promise<boolean>} Vrai si partage réussi
    */
-  static async share(recordingId, sourceUserId, targetUserId) {
-    // Vérifier si l'enregistrement appartient à l'utilisateur source
-    const [recordings] = await db.query(
-      'SELECT file_path, encryption_key FROM recordings WHERE id = ? AND user_id = ?',
-      [recordingId, sourceUserId]
-    );
+  static async share(recordingId, sourceUserId, targetUserId, permissions = 'read') {
+    console.log(`Partage de l'enregistrement ${recordingId} de ${sourceUserId} vers ${targetUserId} avec permissions ${permissions}`);
     
-    if (recordings.length === 0) {
-      return false;
+    // Vérifier si les permissions sont valides
+    if (permissions !== 'read' && permissions !== 'edit') {
+      console.log(`Permissions invalides: ${permissions}, utilisation de 'read' par défaut`);
+      permissions = 'read';
     }
     
+    // Vérifier si l'enregistrement appartient à l'utilisateur source
+    const [recordings] = await db.query(
+      'SELECT file_path, encryption_key, name FROM recordings WHERE id = ? AND user_id = ?',
+      [recordingId, sourceUserId]
+    );
+    if (recordings.length === 0) {
+      console.log(`Enregistrement ${recordingId} non trouvé ou n'appartient pas à l'utilisateur ${sourceUserId}`);
+      return false;
+    }
     // Récupérer les clés publiques/privées des utilisateurs
     const [sourceKeys] = await db.query(
       'SELECT private_key FROM user_keys WHERE user_id = ?',
       [sourceUserId]
     );
-    
     const [targetKeys] = await db.query(
       'SELECT public_key FROM user_keys WHERE user_id = ?',
       [targetUserId]
     );
-    
     if (sourceKeys.length === 0 || targetKeys.length === 0) {
+      console.log(`Clés non trouvées pour l'utilisateur source ${sourceUserId} ou cible ${targetUserId}`);
       return false;
     }
-    
     // Déchiffrer la clé AES avec la clé privée de la source
     const sourcePrivateKey = sourceKeys[0].private_key;
     const encryptedKey = recordings[0].encryption_key;
-    
     const aesKey = crypto.privateDecrypt(
       {
         key: sourcePrivateKey,
@@ -247,7 +247,6 @@ class Recording {
       },
       Buffer.from(encryptedKey, 'base64')
     );
-    
     // Rechiffrer la clé AES avec la clé publique de la cible
     const targetPublicKey = targetKeys[0].public_key;
     const reencryptedKey = crypto.publicEncrypt(
@@ -258,18 +257,34 @@ class Recording {
       aesKey
     ).toString('base64');
     
-    // Insérer le partage
-    await db.query(
-      'INSERT INTO shared_recordings (recording_id, source_user_id, target_user_id, encryption_key) VALUES (?, ?, ?, ?)',
-      [recordingId, sourceUserId, targetUserId, reencryptedKey]
+    // Vérifier si un partage existe déjà et le mettre à jour
+    const [existingShare] = await db.query(
+      'SELECT id FROM shared_recordings WHERE recording_id = ? AND target_user_id = ?',
+      [recordingId, targetUserId]
     );
+    
+    if (existingShare.length > 0) {
+      console.log(`Mise à jour du partage existant avec permissions: ${permissions}`);
+      await db.query(
+        'UPDATE shared_recordings SET permissions = ?, encryption_key = ?, shared_date = NOW() WHERE id = ?',
+        [permissions, reencryptedKey, existingShare[0].id]
+      );
+    } else {
+      // Insérer le partage
+      console.log(`Création d'un nouveau partage avec permissions: ${permissions}`);
+      await db.query(
+        'INSERT INTO shared_recordings (recording_id, source_user_id, target_user_id, encryption_key, permissions) VALUES (?, ?, ?, ?, ?)',
+        [recordingId, sourceUserId, targetUserId, reencryptedKey, permissions]
+      );
+    }
     
     // Créer une notification pour le destinataire
     await db.query(
       'INSERT INTO notifications (user_id, message, recording_id) VALUES (?, ?, ?)',
-      [targetUserId, `Un enregistrement nommé "${recordings[0].name}" a été partagé avec vous.`, recordingId]
+      [targetUserId, `Un enregistrement nommé "${recordings[0].name}" a été partagé avec vous avec des droits de ${permissions === 'edit' ? 'modification' : 'lecture seule'}.`, recordingId]
     );
     
+    console.log(`Partage réussi de l'enregistrement ${recordingId} vers l'utilisateur ${targetUserId}`);
     return true;
   }
 }

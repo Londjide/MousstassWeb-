@@ -3,6 +3,11 @@
  * Gère l'affichage, le filtrage et les actions sur les enregistrements
  */
 
+// const config = {
+//   apiUrl: '/api',
+//   tokenKey: 'moustass_token'
+// };
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialisation
   initRecordingsList();
@@ -83,7 +88,10 @@ function setupPlayButtons() {
   playButtons.forEach(button => {
     button.addEventListener('click', async () => {
       const recordingId = button.getAttribute('data-id');
-      
+      if (!recordingId || recordingId === 'undefined') {
+        alert("Erreur : l'identifiant de l'enregistrement est manquant ou invalide.");
+        return;
+      }
       try {
         // Récupérer les détails de l'enregistrement
         const token = localStorage.getItem(config.tokenKey);
@@ -91,20 +99,17 @@ function setupPlayButtons() {
           alert('Vous devez être connecté pour écouter un enregistrement.');
           return;
         }
-        
         const response = await fetch(`${config.apiUrl}/recordings/${recordingId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
         if (!response.ok) {
           throw new Error('Erreur lors de la récupération de l\'enregistrement');
         }
-        
-        const recording = await response.json();
-        
-        // Afficher la modale de lecture
+        const data = await response.json();
+        // Certains contrôleurs renvoient { success, recording }, d'autres { ...recording }
+        const recording = data.recording || data;
         showPlayerModal(recording);
       } catch (error) {
         console.error('Erreur:', error);
@@ -125,28 +130,21 @@ function showPlayerModal(recording) {
   const playerDate = document.getElementById('player-date');
   
   if (modal && playerTitle && audioPlayer && playerDescription && playerDate) {
-    // Définir les informations de l'enregistrement
-    playerTitle.textContent = recording.title;
+    playerTitle.textContent = recording.title || recording.name || 'Enregistrement';
     playerDescription.textContent = recording.description || 'Pas de description';
-    
-    // Formater la date
-    const date = new Date(recording.created_at);
-    playerDate.textContent = `Enregistré le ${date.toLocaleDateString('fr-FR', { 
+    const date = new Date(recording.created_at || recording.timestamp);
+    playerDate.textContent = isNaN(date.getTime()) ? '' : `Enregistré le ${date.toLocaleDateString('fr-FR', { 
       day: 'numeric', 
       month: 'long', 
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     })}`;
-    
-    // Définir la source audio
-    audioPlayer.src = `${config.apiUrl}/recordings/${recording.id}/stream`;
+    // Ajout du token JWT dans l'URL pour la balise audio
+    const token = localStorage.getItem(config.tokenKey);
+    audioPlayer.src = `${config.apiUrl}/recordings/${recording.id}/stream?token=${token}`;
     audioPlayer.load();
-    
-    // Afficher la modale
     modal.style.display = 'block';
-    
-    // Lancer la lecture automatiquement
     audioPlayer.play();
   }
 }
@@ -163,13 +161,9 @@ function setupShareButtons() {
   shareButtons.forEach(button => {
     button.addEventListener('click', () => {
       const recordingId = button.getAttribute('data-id');
-      
-      // Définir l'ID de l'enregistrement dans le formulaire
       if (recordingIdInput) {
         recordingIdInput.value = recordingId;
       }
-      
-      // Afficher la modale
       if (shareModal) {
         shareModal.style.display = 'block';
       }
@@ -192,7 +186,20 @@ function setupShareButtons() {
           alert('Vous devez être connecté pour partager un enregistrement.');
           return;
         }
-        
+        // 1. Chercher l'utilisateur par email
+        const userRes = await fetch(`${config.apiUrl}/users/by-email?email=${encodeURIComponent(recipientEmail)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!userRes.ok) {
+          throw new Error("Utilisateur destinataire introuvable");
+        }
+        const userData = await userRes.json();
+        const targetUserId = userData.user && userData.user.id;
+        if (!targetUserId) {
+          alert("Aucun utilisateur trouvé avec cet email.");
+          return;
+        }
+        // 2. Appeler l'API de partage avec l'ID utilisateur
         const response = await fetch(`${config.apiUrl}/recordings/${recordingId}/share`, {
           method: 'POST',
           headers: {
@@ -200,27 +207,22 @@ function setupShareButtons() {
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            email: recipientEmail,
+            target_user_id: targetUserId,
             permissions: permissions
           })
         });
-        
         if (!response.ok) {
-          throw new Error('Erreur lors du partage de l\'enregistrement');
+          const err = await response.json();
+          throw new Error(err.message || 'Erreur lors du partage de l\'enregistrement');
         }
-        
-        // Fermer la modale et afficher un message de succès
         if (shareModal) {
           shareModal.style.display = 'none';
         }
-        
         alert('Enregistrement partagé avec succès !');
-        
-        // Réinitialiser le formulaire
         shareForm.reset();
       } catch (error) {
         console.error('Erreur:', error);
-        alert('Une erreur est survenue lors du partage de l\'enregistrement.');
+        alert(error.message || 'Une erreur est survenue lors du partage de l\'enregistrement.');
       }
     });
   }
@@ -230,14 +232,7 @@ function setupShareButtons() {
  * Configure les boutons d'édition
  */
 function setupEditButtons() {
-  const editButtons = document.querySelectorAll('.edit-btn');
-  
-  editButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const recordingId = button.getAttribute('data-id');
-      window.location.href = `/recordings/${recordingId}/edit`;
-    });
-  });
+  // Ne rien faire ici, la gestion de la modale d'édition est déjà assurée par setupEditModal()
 }
 
 /**
@@ -245,70 +240,196 @@ function setupEditButtons() {
  */
 function setupDeleteButtons() {
   const deleteButtons = document.querySelectorAll('.delete-btn');
-  const deleteModal = document.getElementById('delete-modal');
-  const confirmDeleteBtn = document.getElementById('confirm-delete');
-  const cancelDeleteBtn = document.getElementById('cancel-delete');
-  
-  let currentRecordingId = null;
-  
   deleteButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      // Stocker l'ID de l'enregistrement à supprimer
-      currentRecordingId = button.getAttribute('data-id');
-      
-      // Afficher la modale de confirmation
-      if (deleteModal) {
-        deleteModal.style.display = 'block';
+    button.addEventListener('click', async () => {
+      const recordingId = button.getAttribute('data-id');
+      if (!recordingId) return;
+      if (!window.confirm('Voulez-vous vraiment supprimer cet enregistrement ? Cette action est irréversible.')) {
+        return;
       }
-    });
-  });
-  
-  // Bouton de confirmation de suppression
-  if (confirmDeleteBtn) {
-    confirmDeleteBtn.addEventListener('click', async () => {
       try {
-        // Supprimer l'enregistrement
         const token = localStorage.getItem(config.tokenKey);
         if (!token) {
           alert('Vous devez être connecté pour supprimer un enregistrement.');
           return;
         }
-        
-        const response = await fetch(`${config.apiUrl}/recordings/${currentRecordingId}`, {
+        const response = await fetch(`${config.apiUrl}/recordings/${recordingId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
         if (!response.ok) {
           throw new Error('Erreur lors de la suppression de l\'enregistrement');
         }
-        
-        // Fermer la modale
-        if (deleteModal) {
-          deleteModal.style.display = 'none';
-        }
-        
-        // Rafraîchir la page pour mettre à jour la liste
         window.location.reload();
       } catch (error) {
         console.error('Erreur:', error);
         alert('Une erreur est survenue lors de la suppression de l\'enregistrement.');
       }
     });
-  }
-  
-  // Bouton d'annulation de suppression
-  if (cancelDeleteBtn) {
-    cancelDeleteBtn.addEventListener('click', () => {
-      // Fermer la modale
-      if (deleteModal) {
-        deleteModal.style.display = 'none';
+  });
+}
+
+/**
+ * Délégation d'événement pour les boutons d'action sur la liste des enregistrements
+ */
+// document.addEventListener('DOMContentLoaded', () => {
+//   const recordingsList = document.querySelector('.recordings-list');
+//   if (recordingsList) {
+//     recordingsList.addEventListener('click', (e) => {
+//       const playBtn = e.target.closest('.play-btn');
+//       if (playBtn) {
+//         const recordingId = playBtn.getAttribute('data-id');
+//         if (recordingId) playRecording(recordingId);
+//         return;
+//       }
+//       const shareBtn = e.target.closest('.share-btn');
+//       if (shareBtn) {
+//         const recordingId = shareBtn.getAttribute('data-id');
+//         if (recordingId) openShareModal(recordingId);
+//         return;
+//       }
+//       const editBtn = e.target.closest('.edit-btn');
+//       if (editBtn) {
+//         const recordingId = editBtn.getAttribute('data-id');
+//         if (recordingId) window.location.href = `/recordings/${recordingId}/edit`;
+//         return;
+//       }
+//       const deleteBtn = e.target.closest('.delete-btn');
+//       if (deleteBtn) {
+//         const recordingId = deleteBtn.getAttribute('data-id');
+//         if (recordingId) openDeleteModal(recordingId);
+//         return;
+//       }
+//     });
+//   }
+// });
+
+// // Fonctions d'action (à adapter si besoin)
+// function playRecording(recordingId) {
+//   // ... logique existante pour lecture ...
+//   const token = localStorage.getItem(config.tokenKey);
+//   if (!token) {
+//     alert('Vous devez être connecté pour écouter un enregistrement.');
+//     return;
+//   }
+//   fetch(`${config.apiUrl}/recordings/${recordingId}`, {
+//     headers: { 'Authorization': `Bearer ${token}` }
+//   })
+//     .then(res => res.json())
+//     .then(data => {
+//       const recording = data.recording || data;
+//       showPlayerModal(recording);
+//     })
+//     .catch(() => alert('Erreur lors de la récupération de l\'enregistrement.'));
+// }
+function openShareModal(recordingId) {
+  const shareModal = document.getElementById('share-modal');
+  const recordingIdInput = document.getElementById('recording-id');
+  if (recordingIdInput) recordingIdInput.value = recordingId;
+  if (shareModal) shareModal.style.display = 'block';
+}
+function openDeleteModal(recordingId) {
+  const deleteModal = document.getElementById('delete-modal');
+  const confirmDeleteBtn = document.getElementById('confirm-delete');
+  if (deleteModal) deleteModal.style.display = 'block';
+  if (confirmDeleteBtn) {
+    confirmDeleteBtn.onclick = async () => {
+      const token = localStorage.getItem(config.tokenKey);
+      if (!token) {
+        alert('Vous devez être connecté pour supprimer un enregistrement.');
+        return;
       }
-      
-      // Réinitialiser l'ID de l'enregistrement
-      currentRecordingId = null;
-    });
+      const response = await fetch(`${config.apiUrl}/recordings/${recordingId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        deleteModal.style.display = 'none';
+        window.location.reload();
+      } else {
+        alert('Erreur lors de la suppression de l\'enregistrement.');
+      }
+    };
   }
-} 
+}console.log('Attachement listeners edit/delete');
+const editButtons = document.querySelectorAll('.edit-btn');
+const deleteButtons = document.querySelectorAll('.delete-btn');
+console.log('Edit buttons trouvés:', editButtons.length);
+console.log('Delete buttons trouvés:', deleteButtons.length);
+
+editButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    console.log('Click sur edit', btn.getAttribute('data-id'));
+  });
+});
+deleteButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    console.log('Click sur delete', btn.getAttribute('data-id'));
+  });
+});
+
+// Gestion de la modale d'édition
+function setupEditModal() {
+  const editModal = document.getElementById('edit-modal');
+  const editForm = document.getElementById('edit-form');
+  const closeBtn = editModal.querySelector('.close');
+  let currentId = null;
+
+  // Ouvrir la modale et pré-remplir
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      currentId = btn.getAttribute('data-id');
+      // Récupérer les infos de l'enregistrement (depuis le DOM ou via API)
+      const card = btn.closest('.recording-card');
+      const title = card.querySelector('.recording-title').textContent.trim();
+      const description = card.querySelector('.recording-description').textContent.trim();
+      document.getElementById('edit-recording-id').value = currentId;
+      document.getElementById('edit-title').value = title;
+      document.getElementById('edit-description').value = description;
+      editModal.style.display = 'block';
+    });
+  });
+
+  // Fermer la modale
+  closeBtn.onclick = () => { editModal.style.display = 'none'; };
+  window.onclick = (event) => { if (event.target === editModal) editModal.style.display = 'none'; };
+
+  // Soumission du formulaire
+  editForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-recording-id').value;
+    const title = document.getElementById('edit-title').value;
+    const description = document.getElementById('edit-description').value;
+    try {
+      const token = localStorage.getItem(config.tokenKey);
+      const res = await fetch(`/api/recordings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ name: title, description })
+      });
+      const data = await res.json();
+      if (data.success) {
+        utils.showNotification('Enregistrement modifié avec succès', 'success');
+        editModal.style.display = 'none';
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        utils.showNotification(data.message || 'Erreur lors de la modification', 'error');
+      }
+    } catch (err) {
+      utils.showNotification('Erreur réseau', 'error');
+    }
+  };
+}
+
+// Appeler la fonction d'initialisation après le DOMContentLoaded ou dans initRecordingsList
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupEditModal);
+} else {
+  setupEditModal();
+}

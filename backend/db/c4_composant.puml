@@ -1,0 +1,19 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Container(api, "Backend API", "Node.js/Express", "API REST")
+
+Component(userCtrl, "UserController", "Gère l'authentification et les utilisateurs")
+Component(recordingCtrl, "RecordingController", "Gère les enregistrements audio")
+Component(audioCtrl, "AudioController", "Gère les fichiers audio")
+Component(financialCtrl, "FinancialController", "Gère les données financières")
+Component(db, "MySQL", "Stocke les données")
+Component(upload, "FS", "Stocke les fichiers audio chiffrés")
+
+Rel(userCtrl, db, "CRUD utilisateurs")
+Rel(recordingCtrl, db, "CRUD enregistrements")
+Rel(audioCtrl, db, "CRUD audio")
+Rel(financialCtrl, db, "CRUD finances")
+Rel(recordingCtrl, upload, "Stocke/charge fichiers audio")
+Rel(audioCtrl, upload, "Stocke/charge fichiers audio")
+@enduml 
