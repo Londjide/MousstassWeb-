@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "MoustassWeb": {
+      "command": "jbang.cmd",
+      "args": [
+        "jdbc@quarkiverse/quarkus-mcp-servers",
+        "jdbc:oracle:thin:root/root@127.0.0.1:1521:moustass_web",
+        "MoustassWeb"
+      ]
+    }
+  }
+}
