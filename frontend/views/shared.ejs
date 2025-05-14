@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enregistrements partagés avec moi</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/assets/css/shared.css">
+  <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/images/logo.png" type="image/png">
+  <link rel="shortcut icon" href="/assets/images/logo.png">
+  <!-- Empêcher les requêtes vers favicon.png -->
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <div class="container" id="app-container">
+    <%- include('partials/header') %>
+    
+    <main>
+      <header class="shared-header">
+        <h1><span class="gradient-text">Enregistrements partagés</span> <span class="shared-badge">avec moi</span></h1>
+        <div class="shared-filters">
+          <input type="text" id="search-shared" placeholder="Rechercher par titre, propriétaire..." autocomplete="off">
+          <select id="filter-owner">
+            <option value="">Tous les propriétaires</option>
+          </select>
+          <select id="filter-perm">
+            <option value="">Toutes permissions</option>
+            <option value="read">Lecture seule</option>
+            <option value="edit">Édition</option>
+          </select>
+        </div>
+      </header>
+      <div id="shared-spinner" class="shared-spinner"></div>
+      <div id="shared-list" class="shared-list"></div>
+      <div id="shared-empty" class="shared-empty" style="display:none;">
+        <img src="/assets/images/empty-planet.svg" alt="Aucun partage" class="empty-img">
+        <p>Aucun enregistrement partagé pour l'instant.<br><span class="tip">Quand quelqu'un partagera un enregistrement avec vous, il apparaîtra ici !</span></p>
+      </div>
+    </main>
+    
+    <%- include('partials/footer') %>
+  </div>
+  
+  <!-- Modal du lecteur audio -->
+  <div id="player-modal" class="modal">
+    <div class="modal-content player-modal-content">
+      <span class="close">&times;</span>
+      <h2 id="player-title">Lecture de l'enregistrement</h2>
+      <div class="player-info">
+        <div id="player-owner" class="player-owner">
+          <div id="player-avatar" class="player-avatar"></div>
+          <span id="player-owner-name"></span>
+        </div>
+        <p id="player-description" class="player-description"></p>
+        <div id="player-meta" class="player-meta"></div>
+      </div>
+      <div class="player-controls">
+        <audio id="audio-player" controls></audio>
+      </div>
+      <div class="player-actions">
+        <button id="player-download" class="btn btn-outline">Télécharger</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modals de connexion/inscription -->
+  <div id="login-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Connexion</h2>
+      <form id="form-login">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Mot de passe</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Se connecter</button>
+          <button type="button" id="switch-to-register" class="btn btn-outline">Créer un compte</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div id="register-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Inscription</h2>
+      <form id="form-register">
+        <div class="form-group">    
+          <label for="register-full_name">Nom complet</label>
+          <input type="text" id="register-full_name" required>
+        </div>
+        <div class="form-group">
+          <label for="register-username">Nom d'utilisateur</label>
+          <input type="text" id="register-username" required>
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email</label>
+          <input type="email" id="register-email" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Mot de passe</label>
+          <input type="password" id="register-password" required>
+        </div>
+        <div class="form-group">
+          <label for="register-confirm-password">Confirmer le mot de passe</label>
+          <input type="password" id="register-confirm-password" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">S'inscrire</button>
+          <button type="button" id="switch-to-login" class="btn btn-outline">Déjà inscrit ?</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Scripts communs -->
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  
+  <!-- Script spécifique à la page -->
+  <script src="/assets/js/shared.js"></script>
+  
+  <!-- Script de diagnostic -->
+  <script>
+    console.log("Page des enregistrements partagés chargée");
+    
+    // Forcer le chargement complet de l'application
+    document.addEventListener('DOMContentLoaded', function() {
+      // CRUCIAL - Synchroniser le token JWT du localStorage vers les cookies
+      const token = localStorage.getItem('moustass_token');
+      if (token) {
+        // Créer un cookie sécurisé avec le token pour les requêtes de page
+        document.cookie = `token=${token}; path=/; SameSite=Strict`;
+        console.log("Token JWT synchronisé du localStorage vers les cookies");
+      } else {
+        console.log("Pas de token JWT trouvé dans localStorage");
+      }
+    });
+  </script>
+</body>
+</html> 
