@@ -64,6 +64,29 @@
     </div>
   </div>
   
+  <!-- Modal d'édition d'enregistrement -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Modifier l'enregistrement</h2>
+      <form id="edit-form">
+        <input type="hidden" id="edit-recording-id">
+        <div class="form-group">
+          <label for="edit-title">Titre</label>
+          <input type="text" id="edit-title" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-description">Description</label>
+          <textarea id="edit-description" rows="4"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn btn-outline cancel-edit">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
   <!-- Modals de connexion/inscription -->
   <div id="login-modal" class="modal">
     <div class="modal-content">

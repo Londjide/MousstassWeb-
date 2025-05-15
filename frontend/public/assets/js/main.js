@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const jwt = localStorage.getItem('moustass_token');
   if (jwt) {
     document.cookie = `moustass_token=${jwt}; path=/;`;
+    // Mettre à jour l'avatar dans le header si l'utilisateur est connecté
+    updateHeaderAvatar();
   }
   
   // Initialiser le thème global
@@ -233,5 +235,81 @@ function scrollToFeatures() {
   const featuresSection = document.querySelector('.features');
   if (featuresSection) {
     featuresSection.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+/**
+ * Met à jour l'avatar utilisateur dans l'en-tête
+ */
+async function updateHeaderAvatar() {
+  const userAvatar = document.getElementById('user-avatar');
+  const userProfile = document.getElementById('user-profile');
+  
+  if (!userAvatar || !userProfile) return;
+  
+  try {
+    // Afficher l'élément de profil pendant le chargement
+    userProfile.style.display = 'flex';
+    
+    // Récupérer le profil utilisateur depuis l'API
+    const token = localStorage.getItem(config.tokenKey);
+    const response = await fetch('/api/users/profile', {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.user) {
+      // Mis à jour du localStorage avec les données fraîches
+      localStorage.setItem(config.userKey, JSON.stringify(data.user));
+      
+      // Mettre à jour l'avatar
+      userAvatar.innerHTML = '';
+      if (data.user.photo_url) {
+        const img = document.createElement('img');
+        img.src = data.user.photo_url + '?t=' + Date.now();
+        img.alt = 'Photo de profil';
+        img.className = 'profile-pic';
+        userAvatar.appendChild(img);
+        userAvatar.title = data.user.full_name || data.user.username;
+      } else if (data.user.full_name) {
+        const initials = data.user.full_name.trim().split(' ').map(p => p[0]).join('').toUpperCase();
+        userAvatar.textContent = initials;
+        userAvatar.title = data.user.full_name;
+      } else if (data.user.username) {
+        userAvatar.textContent = data.user.username.slice(0, 2).toUpperCase();
+        userAvatar.title = data.user.username;
+      } else {
+        userAvatar.textContent = '?';
+        userAvatar.title = 'Utilisateur';
+      }
+    } else {
+      console.warn('Impossible de récupérer les données utilisateur:', data.message);
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'avatar:', error);
+    
+    // En cas d'erreur, essayer d'utiliser les données en cache
+    const userData = localStorage.getItem(config.userKey);
+    if (userData) {
+      const user = JSON.parse(userData);
+      userAvatar.innerHTML = '';
+      if (user.photo_url) {
+        const img = document.createElement('img');
+        img.src = user.photo_url + '?t=' + Date.now();
+        img.alt = 'Photo de profil';
+        img.className = 'profile-pic';
+        userAvatar.appendChild(img);
+      } else if (user.full_name) {
+        const initials = user.full_name.trim().split(' ').map(p => p[0]).join('').toUpperCase();
+        userAvatar.textContent = initials;
+      } else if (user.username) {
+        userAvatar.textContent = user.username.slice(0, 2).toUpperCase();
+      } else {
+        userAvatar.textContent = '?';
+      }
+    }
   }
 } 

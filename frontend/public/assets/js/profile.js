@@ -528,11 +528,25 @@ function initPhotoUpload() {
       user.photo_url = data.photo_url;
       localStorage.setItem('moustass_user', JSON.stringify(user));
       
-      // Recharger l'avatar
+      // Recharger l'avatar dans la page de profil et dans le header
       renderAvatar(data.photo_url);
+      
+      // Mettre à jour l'avatar dans l'en-tête principal
+      const headerAvatar = document.getElementById('user-avatar');
+      if (headerAvatar) {
+        headerAvatar.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = data.photo_url + '?t=' + Date.now();
+        img.alt = 'Photo de profil';
+        img.className = 'profile-pic';
+        headerAvatar.appendChild(img);
+      }
       
       // Afficher une notification
       utils.showNotification('Photo de profil mise à jour avec succès', 'success');
+      
+      // Vider le champ de fichier pour permettre de réuploader le même fichier
+      photoInput.value = '';
     } catch (error) {
       console.error('Erreur lors de l\'upload de la photo', error);
       utils.showNotification(error.message || 'Erreur lors de l\'upload de la photo', 'error');
@@ -546,34 +560,99 @@ function initPhotoUpload() {
  */
 function renderAvatar(photoUrl) {
   const avatarDiv = document.getElementById('profile-avatar');
-  const user = JSON.parse(localStorage.getItem('moustass_user') || '{}');
+  const headerAvatarDiv = document.getElementById('user-avatar');
   
-  if (!avatarDiv) return;
-  
-  // Vider le conteneur
-  avatarDiv.innerHTML = '';
-  
-  // URL de la photo (priorité à celle passée en paramètre)
-  const url = photoUrl || user.photo_url;
-  
-  if (url) {
-    const img = document.createElement('img');
-    img.src = url + '?t=' + Date.now(); // Ajouter un timestamp pour éviter le cache
-    img.alt = 'Photo de profil';
-    avatarDiv.appendChild(img);
-  } else if (user.full_name) {
-    const initials = user.full_name
-      .trim()
-      .split(' ')
-      .map(p => p[0])
-      .join('')
-      .toUpperCase();
-    avatarDiv.textContent = initials;
-  } else if (user.username) {
-    avatarDiv.textContent = user.username.slice(0, 2).toUpperCase();
-  } else {
-    avatarDiv.textContent = '?';
+  // Récupérer l'utilisateur depuis l'API si possible, sinon depuis le localStorage
+  async function loadUserAndRender() {
+    try {
+      let user;
+      
+      // Essayer de récupérer les données utilisateur via l'API
+      try {
+        const token = localStorage.getItem('moustass_token');
+        if (token) {
+          const response = await fetch('/api/users/profile', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await response.json();
+          if (data.success && data.user) {
+            user = data.user;
+            // Mettre à jour le localStorage avec les données fraîches
+            localStorage.setItem('moustass_user', JSON.stringify(user));
+          }
+        }
+      } catch (err) {
+        console.warn('Impossible de récupérer le profil utilisateur depuis l\'API:', err);
+      }
+      
+      // Si l'API n'a pas fonctionné, utiliser les données en cache
+      if (!user) {
+        user = JSON.parse(localStorage.getItem('moustass_user') || '{}');
+      }
+      
+      // URL de la photo (priorité à celle passée en paramètre)
+      const url = photoUrl || user.photo_url;
+      
+      // Mettre à jour l'avatar dans la page de profil
+      if (avatarDiv) {
+        avatarDiv.innerHTML = '';
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url + '?t=' + Date.now(); // Ajouter un timestamp pour éviter le cache
+          img.alt = 'Photo de profil';
+          avatarDiv.appendChild(img);
+          avatarDiv.title = user.full_name || user.username || 'Utilisateur';
+        } else if (user.full_name) {
+          const initials = user.full_name
+            .trim()
+            .split(' ')
+            .map(p => p[0])
+            .join('')
+            .toUpperCase();
+          avatarDiv.textContent = initials;
+          avatarDiv.title = user.full_name;
+        } else if (user.username) {
+          avatarDiv.textContent = user.username.slice(0, 2).toUpperCase();
+          avatarDiv.title = user.username;
+        } else {
+          avatarDiv.textContent = '?';
+          avatarDiv.title = 'Utilisateur';
+        }
+      }
+      
+      // Mettre également à jour l'avatar dans le header si présent
+      if (headerAvatarDiv) {
+        headerAvatarDiv.innerHTML = '';
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url + '?t=' + Date.now(); // Ajouter un timestamp pour éviter le cache
+          img.alt = 'Photo de profil';
+          img.className = 'profile-pic';
+          headerAvatarDiv.appendChild(img);
+          headerAvatarDiv.title = user.full_name || user.username || 'Utilisateur';
+        } else if (user.full_name) {
+          const initials = user.full_name
+            .trim()
+            .split(' ')
+            .map(p => p[0])
+            .join('')
+            .toUpperCase();
+          headerAvatarDiv.textContent = initials;
+          headerAvatarDiv.title = user.full_name;
+        } else if (user.username) {
+          headerAvatarDiv.textContent = user.username.slice(0, 2).toUpperCase();
+          headerAvatarDiv.title = user.username;
+        } else {
+          headerAvatarDiv.textContent = '?';
+          headerAvatarDiv.title = 'Utilisateur';
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du rendu de l\'avatar:', error);
+    }
   }
+  
+  loadUserAndRender();
 }
 
 /**

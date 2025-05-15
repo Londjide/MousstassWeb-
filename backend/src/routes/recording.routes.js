@@ -20,8 +20,14 @@ router.get('/:id', auth, RecordingController.getOne);
 // Récupérer l'audio d'un enregistrement (stream)
 router.get('/:id/stream', verifyTokenForPages, RecordingController.stream);
 
+// Générer une signature pour accéder à un enregistrement partagé
+router.get('/:id/signature', auth, RecordingController.generateSignature);
+
 // Créer un nouvel enregistrement (simulé pour le moment)
 router.post('/', auth, RecordingController.create);
+
+// Mettre à jour un enregistrement
+router.put('/:id', auth, RecordingController.update);
 
 // Supprimer un enregistrement (simulé pour le moment)
 router.delete('/:id', auth, RecordingController.delete);
