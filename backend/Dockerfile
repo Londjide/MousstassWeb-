@@ -1,20 +1,13 @@
-FROM node:18-alpine
+FROM node:18
 
-# Création du répertoire de travail
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Copie des fichiers package.json et package-lock.json
 COPY package*.json ./
 
-# Installation des dépendances
-RUN npm ci --only=production
+RUN npm install
 
-# Copie du code source
 COPY . .
 
-# Exposition du port
 EXPOSE 3000
 
-# Commande de démarrage
-CMD ["node", "src/server.js"]
-
+CMD ["npm", "run", "dev"]
