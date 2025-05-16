@@ -3,7 +3,7 @@
  */
 const config = {
     // URL de base de l'API
-    apiUrl: 'http://localhost:3000/api', 
+    apiUrl: '/api', 
     
     // Timeout pour les requêtes API (en ms)
     apiTimeout: 10000,

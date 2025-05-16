@@ -5,7 +5,7 @@ const api = {
   /**
    * URL de base de l'API
    */
-  baseUrl: 'http://localhost:3000/api',
+  baseUrl: '/api',
   
   /**
    * Cache de vérification du token pour limiter les requêtes au serveur

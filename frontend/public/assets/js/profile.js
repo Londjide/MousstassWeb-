@@ -41,7 +41,7 @@ const profileService = {
         }
         
         // Faire la requête avec le token mis à jour
-        const response = await fetch('http://localhost:3000/api/users/profile', {
+        const response = await fetch('/api/users/profile', {
           headers: { 
             'Authorization': 'Bearer ' + currentToken
           }
@@ -105,7 +105,7 @@ const profileService = {
           full_name: data.full_name
         };
         
-        const response = await fetch('http://localhost:3000/api/users/profile', {
+        const response = await fetch('/api/users/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ const profileService = {
      */
     async changePassword(currentPassword, newPassword) {
       try {
-        const response = await fetch('http://localhost:3000/api/auth/change-password', {
+        const response = await fetch('/api/auth/change-password', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ const profileService = {
         localStorage.setItem('moustass_preferences', JSON.stringify(preferences));
         
         // Tenter d'enregistrer également sur le serveur si une API existe
-        const response = await fetch('http://localhost:3000/api/users/preferences', {
+        const response = await fetch('/api/users/preferences', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -547,7 +547,7 @@ function initPhotoUpload() {
       const formData = new FormData();
       formData.append('photo', photoInput.files[0]);
       
-      const response = await fetch('http://localhost:3000/api/users/photo', {
+      const response = await fetch('/api/users/photo', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + localStorage.getItem('moustass_token')
@@ -609,7 +609,7 @@ function renderAvatar(photoUrl) {
       try {
         const token = localStorage.getItem('moustass_token');
         if (token) {
-          const response = await fetch('http://localhost:3000/api/users/profile', {
+          const response = await fetch('/api/users/profile', {
             headers: { 'Authorization': 'Bearer ' + token }
           });
           const data = await response.json();

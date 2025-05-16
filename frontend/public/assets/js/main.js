@@ -182,7 +182,7 @@ async function verifyTokenValidity() {
     const token = localStorage.getItem('moustass_token');
     if (!token) return;
     
-    const response = await fetch('http://localhost:3000/api/auth/verify', {
+    const response = await fetch('/api/auth/verify', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -393,7 +393,7 @@ async function updateHeaderAvatar() {
     
     // Récupérer le profil utilisateur depuis l'API
     const token = localStorage.getItem('moustass_token');
-    const response = await fetch('http://localhost:3000/api/users/profile', {
+    const response = await fetch('/api/users/profile', {
       headers: {
         'Authorization': 'Bearer ' + token
       }

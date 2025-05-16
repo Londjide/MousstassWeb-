@@ -361,7 +361,7 @@ class Auth {
       
       // Fallback: vérification directe si l'API n'est pas disponible
       console.log("Module API non disponible, utilisation de la vérification directe");
-      const response = await fetch('http://localhost:3000/api/auth/verify', {
+      const response = await fetch('/api/auth/verify', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -446,7 +446,7 @@ class Auth {
     }
     try {
       console.log("Récupération du profil utilisateur depuis le serveur...");
-      const res = await fetch('http://localhost:3000/api/users/profile', {
+      const res = await fetch('/api/users/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -660,7 +660,7 @@ class Auth {
       console.log("Tentative de connexion avec email:", email);
       
       // Appel direct à l'API sans passer par le module api
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -794,7 +794,7 @@ class Auth {
       console.log("Tentative d'inscription pour:", email);
       
       // Appel direct à l'API sans passer par le module api
-      const response = await fetch('http://localhost:3000/api/auth/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -897,7 +897,7 @@ class Auth {
     
     // Journaliser la déconnexion côté serveur (facultatif - peut échouer)
     try {
-      fetch('http://localhost:3000/api/auth/logout', {
+      fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
