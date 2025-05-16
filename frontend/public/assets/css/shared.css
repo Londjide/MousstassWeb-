@@ -159,6 +159,15 @@
   background-color: #395682;
 }
 
+.edit-btn {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #138496;
+}
+
 .download-btn {
   background-color: #f8b400;
   color: #212529;

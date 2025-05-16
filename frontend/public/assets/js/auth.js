@@ -241,22 +241,27 @@ class Auth {
         // Affichage dans le header
         const userProfile = this.getElement('user-profile');
         const userAvatar = this.getElement('user-avatar');
-        if (userProfile) userProfile.style.display = '';
+        if (userProfile) userProfile.style.display = 'flex';
         if (userAvatar) {
           userAvatar.innerHTML = '';
           if (user.photo_url) {
+            // Ajouter un timestamp pour éviter le cache
             const img = document.createElement('img');
             img.src = user.photo_url + '?t=' + Date.now();
             img.alt = 'Photo de profil';
             img.className = 'profile-pic';
             userAvatar.appendChild(img);
+            userAvatar.title = user.full_name || user.username;
           } else if (user.full_name) {
             const initials = user.full_name.trim().split(' ').map(p => p[0]).join('').toUpperCase();
             userAvatar.textContent = initials;
+            userAvatar.title = user.full_name;
           } else if (user.username) {
             userAvatar.textContent = user.username.slice(0,2).toUpperCase();
+            userAvatar.title = user.username;
           } else {
             userAvatar.textContent = '?';
+            userAvatar.title = 'Utilisateur';
           }
         }
         // Masquer le nom à côté de l'avatar
@@ -274,6 +279,7 @@ class Auth {
         this.setUnauthenticatedState();
       }
     } catch (e) {
+      console.error("Erreur lors de la récupération du profil:", e);
       this.setUnauthenticatedState();
     }
   }

@@ -219,11 +219,11 @@ const RecordingController = {
     try {
       const recordingId = parseInt(req.params.id);
       const sourceUserId = req.user.id;
-      const { target_user_id } = req.body;
+      const { target_user_id, permissions } = req.body;
       if (!target_user_id) {
         return res.status(400).json({ success: false, message: "ID du destinataire requis." });
       }
-      const success = await Recording.share(recordingId, sourceUserId, target_user_id);
+      const success = await Recording.share(recordingId, sourceUserId, target_user_id, permissions);
       if (!success) {
         return res.status(400).json({ success: false, message: "Partage impossible (droits ou utilisateur inexistant)." });
       }
@@ -251,6 +251,25 @@ const RecordingController = {
           message: 'Enregistrement non trouvé ou accès non autorisé'
         });
       }
+      
+      // Vérifier si c'est un partage avec un autre utilisateur
+      const isSharedWithOther = recording.user_id !== userId;
+      let signature = null;
+      
+      // Si c'est un partage avec un autre utilisateur, vérifier la signature
+      if (isSharedWithOther) {
+        signature = req.query.signature;
+        if (!signature) {
+          return res.status(403).json({
+            success: false,
+            message: 'Une signature est requise pour accéder à cet enregistrement partagé'
+          });
+        }
+        
+        // Associer l'ID de l'utilisateur actuel pour la vérification
+        recording.target_user_id = userId;
+      }
+      
       // Récupérer la clé privée de l'utilisateur
       const privateKey = await User.getPrivateKey(userId);
       if (!privateKey) {
@@ -259,8 +278,10 @@ const RecordingController = {
           message: 'Clé privée introuvable'
         });
       }
-      // Déchiffrer le contenu audio
-      const audioData = await Recording.getAudioContent(recording, privateKey);
+      
+      // Déchiffrer le contenu audio avec signature si nécessaire
+      const audioData = await Recording.getAudioContent(recording, privateKey, signature);
+      
       // Déterminer le type MIME (par défaut webm)
       res.set('Content-Type', 'audio/webm');
       res.set('Content-Disposition', `inline; filename="${recording.name || 'audio'}.webm"`);
@@ -269,7 +290,60 @@ const RecordingController = {
       console.error('Erreur lors du streaming audio:', error);
       res.status(500).json({
         success: false,
-        message: 'Erreur lors du streaming audio'
+        message: 'Erreur lors du streaming audio: ' + error.message
+      });
+    }
+  },
+
+  /**
+   * Génère une signature pour accéder à un enregistrement partagé
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
+   */
+  generateSignature: async (req, res) => {
+    try {
+      const recordingId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      // Vérifier si l'utilisateur a accès à l'enregistrement
+      const recording = await Recording.findById(recordingId, userId);
+      if (!recording) {
+        return res.status(404).json({
+          success: false,
+          message: 'Enregistrement non trouvé ou accès non autorisé'
+        });
+      }
+      
+      // Vérifier si c'est un partage (pas son propre enregistrement)
+      if (recording.user_id === userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Aucune signature requise pour vos propres enregistrements'
+        });
+      }
+      
+      // Récupérer la clé privée de l'utilisateur
+      const privateKey = await User.getPrivateKey(userId);
+      if (!privateKey) {
+        return res.status(500).json({
+          success: false,
+          message: 'Clé privée introuvable'
+        });
+      }
+      
+      // Générer la signature
+      const signature = await Recording.generateSignature(recordingId, privateKey);
+      
+      res.json({
+        success: true,
+        signature,
+        expiration: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
+      });
+    } catch (error) {
+      console.error('Erreur lors de la génération de la signature:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la génération de la signature: ' + error.message
       });
     }
   },
@@ -323,7 +397,8 @@ const RecordingController = {
       const [rows] = await db.query(`
         SELECT r.id, r.name, r.description, r.timestamp, r.duration,
                u.id AS owner_id, u.email AS owner_email, u.full_name AS owner_name, u.photo_url AS owner_avatar,
-               s.permissions, s.shared_date AS shared_at
+               s.permissions, s.shared_date AS shared_at,
+               CASE WHEN s.source_user_id = s.target_user_id THEN true ELSE false END AS is_self_shared
         FROM shared_recordings s
         JOIN recordings r ON s.recording_id = r.id
         JOIN users u ON r.user_id = u.id
@@ -343,6 +418,53 @@ const RecordingController = {
     } catch (error) {
       console.error('[getSharedWithMe] Erreur:', error);
       res.status(500).json({ success: false, message: "Erreur lors de la récupération des enregistrements partagés." });
+    }
+  },
+
+  /**
+   * Met à jour un enregistrement audio
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
+   */
+  update: async (req, res) => {
+    try {
+      const recordingId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { name, description } = req.body;
+      
+      // Vérifier si l'enregistrement existe et si l'utilisateur a les droits d'édition
+      const hasEditAccess = await Recording.checkEditAccess(recordingId, userId);
+      if (!hasEditAccess) {
+        return res.status(403).json({
+          success: false,
+          message: "Vous n'avez pas les droits pour modifier cet enregistrement"
+        });
+      }
+      
+      // Mise à jour de l'enregistrement
+      const success = await Recording.update(recordingId, { name, description });
+      
+      if (!success) {
+        return res.status(500).json({
+          success: false,
+          message: "Erreur lors de la mise à jour de l'enregistrement"
+        });
+      }
+      
+      // Récupérer l'enregistrement mis à jour
+      const updatedRecording = await Recording.findById(recordingId, userId);
+      
+      res.json({
+        success: true,
+        message: "Enregistrement mis à jour avec succès",
+        recording: updatedRecording
+      });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'enregistrement:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la mise à jour de l\'enregistrement' 
+      });
     }
   }
 };

@@ -100,7 +100,9 @@ class Recording {
           WHEN r.user_id = ? THEN r.encryption_key
           WHEN sr.id IS NOT NULL THEN sr.encryption_key
           ELSE NULL
-        END AS proper_key
+        END AS proper_key,
+        sr.source_user_id,
+        sr.target_user_id
       FROM recordings r
       LEFT JOIN shared_recordings sr ON r.id = sr.recording_id AND sr.target_user_id = ?
       WHERE r.id = ?`,
@@ -118,9 +120,29 @@ class Recording {
    * Récupère le contenu audio d'un enregistrement (déchiffré)
    * @param {Object} recording Enregistrement avec sa clé
    * @param {string} privateKey Clé privée de l'utilisateur pour déchiffrer
+   * @param {string} signature Signature de l'utilisateur (pour les enregistrements partagés)
    * @returns {Promise<Buffer>} Données audio déchiffrées
    */
-  static async getAudioContent(recording, privateKey) {
+  static async getAudioContent(recording, privateKey, signature = null) {
+    // Vérifier si l'enregistrement est partagé (pas propriétaire)
+    const isShared = recording.user_id !== recording.target_user_id;
+    
+    // Vérifier si l'utilisateur est le propriétaire original
+    const isOwner = recording.user_id === recording.target_user_id;
+    
+    // Si l'enregistrement est partagé et que ce n'est pas un auto-partage, vérifier la signature
+    if (isShared && !isOwner && !signature) {
+      throw new Error('Une signature est requise pour accéder à cet enregistrement partagé');
+    }
+    
+    // Si une signature est fournie et que ce n'est pas un auto-partage, la vérifier
+    if (isShared && !isOwner && signature) {
+      const isValid = await this.verifySignature(recording.id, signature, recording.target_user_id);
+      if (!isValid) {
+        throw new Error('Signature invalide pour cet enregistrement');
+      }
+    }
+    
     // Lecture du fichier chiffré (binaire)
     const filePath = path.join(__dirname, '../../uploads', recording.file_path);
     const fileData = await fs.readFile(filePath); // pas d'encodage
@@ -145,6 +167,104 @@ class Recording {
       decipher.final()
     ]);
     return decryptedData;
+  }
+
+  /**
+   * Vérifie la signature pour un enregistrement partagé
+   * @param {number} recordingId ID de l'enregistrement
+   * @param {string} signature Signature fournie
+   * @param {number} userId ID de l'utilisateur
+   * @returns {Promise<boolean>} Vrai si la signature est valide
+   */
+  static async verifySignature(recordingId, signature, userId) {
+    try {
+      // Récupérer la clé publique de l'utilisateur
+      const [rows] = await db.query(
+        'SELECT public_key FROM user_keys WHERE user_id = ?',
+        [userId]
+      );
+      
+      if (rows.length === 0) {
+        return false;
+      }
+      
+      const publicKey = rows[0].public_key;
+      
+      // Créer un message à vérifier (format standard: recordingId + timestamp)
+      const parts = signature.split('.');
+      if (parts.length !== 2) {
+        return false;
+      }
+      
+      const [signedData, signatureValue] = parts;
+      const decodedData = Buffer.from(signedData, 'base64').toString();
+      const data = JSON.parse(decodedData);
+      
+      // Vérifier que les données concernent bien cet enregistrement
+      if (data.recordingId !== recordingId) {
+        return false;
+      }
+      
+      // Vérifier que la signature n'est pas expirée (validité de 5 minutes)
+      const signatureTime = new Date(data.timestamp);
+      const now = new Date();
+      const diffMinutes = (now - signatureTime) / (1000 * 60);
+      
+      if (diffMinutes > 5) {
+        return false;
+      }
+      
+      // Vérifier la signature cryptographique
+      const isValid = crypto.verify(
+        'sha256',
+        Buffer.from(signedData, 'base64'),
+        {
+          key: publicKey,
+          padding: crypto.constants.RSA_PKCS1_PADDING
+        },
+        Buffer.from(signatureValue, 'base64')
+      );
+      
+      return isValid;
+    } catch (error) {
+      console.error('Erreur lors de la vérification de la signature:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Génère une signature pour accéder à un enregistrement partagé
+   * @param {number} recordingId ID de l'enregistrement
+   * @param {string} privateKey Clé privée de l'utilisateur
+   * @returns {Promise<string>} Signature générée
+   */
+  static async generateSignature(recordingId, privateKey) {
+    try {
+      // Créer les données à signer
+      const data = {
+        recordingId: recordingId,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Convertir en JSON et encoder en Base64
+      const signedData = Buffer.from(JSON.stringify(data)).toString('base64');
+      
+      // Signer avec la clé privée
+      const signature = crypto.sign(
+        'sha256',
+        Buffer.from(signedData, 'base64'),
+        {
+          key: privateKey,
+          padding: crypto.constants.RSA_PKCS1_PADDING
+        }
+      ).toString('base64');
+      
+      // Format: donnéesSignées.signature
+      return `${signedData}.${signature}`;
+    } catch (error) {
+      console.error('Erreur lors de la génération de la signature:', error);
+      throw new Error('Impossible de générer la signature');
+    }
   }
 
   /**
@@ -286,6 +406,50 @@ class Recording {
     
     console.log(`Partage réussi de l'enregistrement ${recordingId} vers l'utilisateur ${targetUserId}`);
     return true;
+  }
+
+  /**
+   * Vérifie si l'utilisateur a le droit de modifier l'enregistrement
+   * @param {number} recordingId ID de l'enregistrement
+   * @param {number} userId ID de l'utilisateur
+   * @returns {Promise<boolean>} Vrai si l'utilisateur a les droits d'édition
+   */
+  static async checkEditAccess(recordingId, userId) {
+    // L'utilisateur peut modifier s'il est propriétaire OU s'il a un partage avec droits d'édition
+    const [rows] = await db.query(
+      `SELECT 1 
+      FROM (
+        SELECT id FROM recordings WHERE id = ? AND user_id = ?
+        UNION 
+        SELECT recording_id FROM shared_recordings 
+        WHERE recording_id = ? AND target_user_id = ? AND permissions = 'edit'
+      ) AS access_check`,
+      [recordingId, userId, recordingId, userId]
+    );
+    
+    return rows.length > 0;
+  }
+
+  /**
+   * Met à jour un enregistrement
+   * @param {number} recordingId ID de l'enregistrement
+   * @param {Object} updateData Données à mettre à jour (name, description)
+   * @returns {Promise<boolean>} Vrai si la mise à jour a réussi
+   */
+  static async update(recordingId, updateData) {
+    const { name, description } = updateData;
+    
+    try {
+      await db.query(
+        'UPDATE recordings SET name = ?, description = ? WHERE id = ?',
+        [name, description, recordingId]
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'enregistrement:', error);
+      return false;
+    }
   }
 }
 

@@ -151,8 +151,8 @@ section {
 }
 
 .hero {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   justify-content: space-between;
   gap: var(--spacing-xl);
   min-height: 60vh;
@@ -178,7 +178,7 @@ section {
 .hero-image {
   flex: 1;
   display: flex;
-  justify-content: center;
+    justify-content: center;
   align-items: center;
 }
 
@@ -221,8 +221,8 @@ section {
 }
 
 .feature-icon {
-  width: 60px;
-  height: 60px;
+    width: 60px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -259,16 +259,16 @@ section {
 }
 
 .recording-controls {
-  display: flex;
+    display: flex;
   align-items: center;
-  justify-content: center;
+    justify-content: center;
   gap: var(--spacing-xl);
   margin-bottom: var(--spacing-lg);
 }
 
 .btn-record, .btn-stop {
   display: flex;
-  align-items: center;
+    align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-lg) var(--spacing-xl);
@@ -280,7 +280,7 @@ section {
 
 .btn-record {
   background: radial-gradient(circle, var(--danger-color) 60%, #fff 100%);
-  color: white;
+    color: white;
   border: none;
   animation: pulse 1.2s infinite;
 }
@@ -333,7 +333,7 @@ section {
 }
 
 .audio-visualizer {
-  width: 100%;
+    width: 100%;
   height: 180px;
   margin-bottom: var(--spacing-lg);
   background: linear-gradient(90deg, var(--primary-light) 0%, var(--secondary-light) 100%);
@@ -361,8 +361,8 @@ section {
 }
 
 .form-group input:focus, .form-group textarea:focus {
-  border-color: var(--primary-color);
-  outline: none;
+    border-color: var(--primary-color);
+    outline: none;
 }
 
 .form-actions {
@@ -374,7 +374,7 @@ section {
 
 /* Buttons */
 .btn {
-  display: inline-block;
+    display: inline-block;
   font-weight: 500;
   text-align: center;
   white-space: nowrap;
@@ -537,8 +537,8 @@ footer p {
 
 /* Error pages */
 .error-container {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   justify-content: center;
   height: 100vh;
 }
@@ -624,7 +624,7 @@ footer p {
   width: 60px;
   height: 60px;
   border: 5px solid rgba(74, 111, 165, 0.2);
-  border-radius: 50%;
+    border-radius: 50%;
   border-top-color: var(--primary-color);
   animation: spin 1s ease-in-out infinite;
   margin-bottom: var(--spacing-lg);
@@ -683,8 +683,8 @@ footer p {
 }
 
 .recordings-filters {
-  display: flex;
-  justify-content: space-between;
+    display: flex;
+    justify-content: space-between;
   margin-bottom: var(--spacing-lg);
   background-color: white;
   padding: var(--spacing-md);
@@ -699,7 +699,7 @@ footer p {
 }
 
 .search-container input {
-  flex: 1;
+    flex: 1;
   padding: var(--spacing-sm);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius) 0 0 var(--border-radius);
@@ -724,9 +724,9 @@ footer p {
 }
 
 .recording-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   padding: var(--spacing-md);
   background-color: white;
   border-radius: var(--border-radius);
@@ -741,9 +741,9 @@ footer p {
 }
 
 .recording-info {
-  flex: 1;
-}
-
+    flex: 1;
+  }
+  
 .recording-title {
   font-size: var(--font-size-lg);
   color: var(--primary-color);
@@ -777,7 +777,7 @@ footer p {
 }
 
 .recording-actions {
-  display: flex;
+    display: flex;
   gap: var(--spacing-sm);
 }
 
@@ -807,21 +807,21 @@ footer p {
 }
 
 .pagination {
-      display: flex;
-  justify-content: center;
+    display: flex;
+    justify-content: center;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-lg);
 }
 
 .pagination-link {
   display: inline-flex;
-  align-items: center;
+    align-items: center;
   justify-content: center;
   min-width: 36px;
   height: 36px;
   padding: 0 var(--spacing-sm);
   background-color: white;
-  border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   color: var(--text-dark);
   font-weight: 500;
@@ -833,8 +833,8 @@ footer p {
 }
 
 .pagination-link.active {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
   color: white;
 }
 
@@ -859,16 +859,16 @@ footer p {
 }
 
 .loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
   background-color: #f8f9fa;
-  display: flex;
+    display: flex;
       flex-direction: column;
-  justify-content: center;
-      align-items: center;
+    justify-content: center;
+    align-items: center;
   z-index: 9999;
 }
 
@@ -892,7 +892,7 @@ footer p {
   margin: 0 auto;
   padding: 20px;
   min-height: 100vh;
-  display: flex;
+    display: flex;
       flex-direction: column;
 }
 
@@ -902,12 +902,11 @@ footer p {
 
 /* Avatar styles - Correctifs majeurs pour toutes les pages */
 .user-avatar,
-.user-profile,
 .profile-avatar {
   width: 40px !important;
   height: 40px !important;
   border-radius: 50% !important;
-  background: transparent !important;
+  background-color: #4a6fa5 !important;
   color: #fff !important;
   display: flex !important;
   align-items: center !important;
@@ -930,14 +929,12 @@ footer p {
 
 /* Toutes les images d'avatar */
 .user-avatar img,
-.user-profile img,
 .profile-avatar img {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
   border-radius: 50% !important;
   display: block !important;
-  background: #4a6fa5 !important;
 }
 
 /* Style du conteneur dans le header */
@@ -945,6 +942,59 @@ footer p {
   display: flex !important;
   align-items: center !important;
   gap: 1rem !important;
+}
+
+.user-profile {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.profile-pic {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+}
+
+.profile-initials {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+  font-size: 1.1rem !important;
+  background: #4a6fa5 !important;
+  color: #fff !important;
+}
+
+/* Correction pour les avatars dans les modals */
+.modal .user-avatar,
+.modal .profile-avatar {
+  margin: 0 auto !important;
+}
+
+/* Styles pour les avatars de la section shared */
+.shared-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background-color: #4a6fa5 !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+  font-size: 1.1rem !important;
+  overflow: hidden !important;
+}
+
+.shared-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
 }
 
 /* Styles pour le mode sombre */
@@ -1096,4 +1146,48 @@ body.dark-mode .status-message.error {
   font-size: 1.1rem;
   background: #4a6fa5;
   color: #fff;
+  }
+
+/* Styles pour les avatars dans la modal du player */
+#player-avatar {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  background-color: #4a6fa5 !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+  font-size: 1.3rem !important;
+  overflow: hidden !important;
+  margin: 0 auto !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+#player-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+}
+
+/* Styles spécifiques pour la page de partage */
+.shared-owner {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.shared-avatar {
+  border: 2px solid #fff !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+}
+
+/* Pour tous les avatars */
+.user-avatar:empty,
+.profile-avatar:empty,
+.shared-avatar:empty,
+#player-avatar:empty {
+  background-color: #4a6fa5 !important;
   }
