@@ -82,11 +82,11 @@ const RecordingController = {
       // Simulation d'un enregistrement
       const recording = {
         id: recordingId,
-        title: "Enregistrement " + recordingId,
-        description: "Description de l'enregistrement",
+        title: 'Enregistrement ' + recordingId,
+        description: 'Description de l\'enregistrement',
         duration: 180, // 3 minutes
         created_at: new Date(),
-        file_path: "/path/to/file.webm"
+        file_path: '/path/to/file.webm'
       };
       
       res.json({
@@ -195,7 +195,7 @@ const RecordingController = {
       if (!success) {
         return res.status(404).json({
           success: false,
-          message: "Enregistrement non trouvé ou vous n'êtes pas le propriétaire."
+          message: 'Enregistrement non trouvé ou vous n\'êtes pas le propriétaire.'
         });
       }
       res.json({
@@ -219,18 +219,18 @@ const RecordingController = {
     try {
       const recordingId = parseInt(req.params.id);
       const sourceUserId = req.user.id;
-      const { target_user_id, permissions } = req.body;
+      const { target_user_id } = req.body;
       if (!target_user_id) {
-        return res.status(400).json({ success: false, message: "ID du destinataire requis." });
+        return res.status(400).json({ success: false, message: 'ID du destinataire requis.' });
       }
-      const success = await Recording.share(recordingId, sourceUserId, target_user_id, permissions);
+      const success = await Recording.share(recordingId, sourceUserId, target_user_id);
       if (!success) {
-        return res.status(400).json({ success: false, message: "Partage impossible (droits ou utilisateur inexistant)." });
+        return res.status(400).json({ success: false, message: 'Partage impossible (droits ou utilisateur inexistant).' });
       }
-      res.json({ success: true, message: "Enregistrement partagé avec succès." });
+      res.json({ success: true, message: 'Enregistrement partagé avec succès.' });
     } catch (error) {
       console.error('Erreur lors du partage de l\'enregistrement:', error);
-      res.status(500).json({ success: false, message: "Erreur lors du partage de l'enregistrement." });
+      res.status(500).json({ success: false, message: 'Erreur lors du partage de l\'enregistrement.' });
     }
   },
 
@@ -241,56 +241,130 @@ const RecordingController = {
    */
   stream: async (req, res) => {
     try {
+      console.log(`[stream] Demande de streaming pour l'enregistrement ${req.params.id}`);
+      
+      // Vérifier la présence d'une signature pour les accès partagés
+      const signature = req.query.signature;
+      const isSharedAccess = !!signature;
+      
+      console.log(`[stream] Type d'accès: ${isSharedAccess ? 'Partagé (avec signature)' : 'Direct (utilisateur propriétaire)'}`);
+      
+      // Récupérer l'ID de l'enregistrement
       const recordingId = parseInt(req.params.id);
+      if (isNaN(recordingId)) {
+        console.error('[stream] ID d\'enregistrement invalide:', req.params.id);
+        return res.status(400).json({
+          success: false,
+          message: 'ID d\'enregistrement invalide'
+        });
+      }
+      
+      // Récupérer l'utilisateur depuis la requête (middleware d'authentification)
       const userId = req.user.id;
-      // Récupérer l'enregistrement et vérifier l'accès
-      const recording = await Recording.findById(recordingId, userId);
+      console.log(`[stream] Demande de l'utilisateur ID: ${userId}`);
+      
+      let recording;
+      
+      // Rechercher l'enregistrement différemment selon le type d'accès
+      if (isSharedAccess) {
+        console.log(`[stream] Vérification de la signature: ${signature}`);
+        try {
+          // Utiliser le modèle pour vérifier la signature et récupérer l'enregistrement
+          recording = await Recording.findById(recordingId, userId);
+          console.log(`[stream] Résultat vérification signature: ${recording ? 'Valide' : 'Invalide'}`);
+          
+          if (!recording) {
+            return res.status(403).json({
+              success: false,
+              message: 'Signature invalide ou expirée'
+            });
+          }
+        } catch (signatureError) {
+          console.error('[stream] Erreur lors de la vérification de la signature:', signatureError);
+          return res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la vérification de la signature'
+          });
+        }
+      } else {
+        // Accès direct, vérifier que l'utilisateur est propriétaire ou a accès
+        console.log(`[stream] Vérification de l'accès direct pour l'utilisateur ${userId}`);
+        recording = await Recording.findById(recordingId, userId);
+      }
+      
+      // Vérifier si l'enregistrement existe et si l'utilisateur a les droits d'accès
       if (!recording) {
+        console.error(`[stream] Enregistrement ${recordingId} non trouvé ou accès non autorisé`);
         return res.status(404).json({
           success: false,
           message: 'Enregistrement non trouvé ou accès non autorisé'
         });
       }
       
-      // Vérifier si c'est un partage avec un autre utilisateur
-      const isSharedWithOther = recording.user_id !== userId;
-      let signature = null;
+      // Récupérer les clés de l'utilisateur
+      console.log(`[stream] Récupération des clés pour l'utilisateur ${userId}`);
+      const [keyRows] = await db.query('SELECT private_key FROM user_keys WHERE user_id = ?', [userId]);
       
-      // Si c'est un partage avec un autre utilisateur, vérifier la signature
-      if (isSharedWithOther) {
-        signature = req.query.signature;
-        if (!signature) {
-          return res.status(403).json({
-            success: false,
-            message: 'Une signature est requise pour accéder à cet enregistrement partagé'
-          });
-        }
-        
-        // Associer l'ID de l'utilisateur actuel pour la vérification
-        recording.target_user_id = userId;
-      }
-      
-      // Récupérer la clé privée de l'utilisateur
-      const privateKey = await User.getPrivateKey(userId);
-      if (!privateKey) {
+      if (keyRows.length === 0) {
+        console.error(`[stream] Clés non trouvées pour l'utilisateur ${userId}`);
         return res.status(500).json({
           success: false,
-          message: 'Clé privée introuvable'
+          message: 'Erreur de configuration des clés de chiffrement'
         });
       }
       
-      // Déchiffrer le contenu audio avec signature si nécessaire
-      const audioData = await Recording.getAudioContent(recording, privateKey, signature);
+      const privateKey = keyRows[0].private_key;
       
-      // Déterminer le type MIME (par défaut webm)
-      res.set('Content-Type', 'audio/webm');
-      res.set('Content-Disposition', `inline; filename="${recording.name || 'audio'}.webm"`);
-      res.send(audioData);
+      // Récupérer les données audio
+      console.log(`[stream] Récupération du contenu audio pour l'enregistrement ${recordingId}`);
+      try {
+        const audioData = await Recording.getAudioContent(recording, privateKey, signature);
+        
+        // Configuration du téléchargement si demandé
+        const isDownload = req.query.download === 'true';
+        if (isDownload) {
+          console.log('[stream] Mode téléchargement activé');
+          res.setHeader('Content-Disposition', `attachment; filename="${recording.name || 'recording'}.${recording.audio_format || 'webm'}"`);
+        } else {
+          console.log('[stream] Mode streaming (sans téléchargement)');
+          res.setHeader('Content-Disposition', 'inline');
+        }
+        
+        // Définir le type MIME en fonction du format audio
+        let contentType = 'audio/webm';
+        if (recording.audio_format === 'mp3') {
+          contentType = 'audio/mpeg';
+        } else if (recording.audio_format === 'ogg') {
+          contentType = 'audio/ogg';
+        } else if (recording.audio_format === 'wav') {
+          contentType = 'audio/wav';
+        }
+        
+        // Définir les en-têtes pour le streaming audio
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', audioData.length);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        // Envoyer directement les données audio
+        console.log(`[stream] Envoi de ${audioData.length} octets au client avec Content-Type: ${contentType}`);
+        res.end(audioData);
+        
+      } catch (audioError) {
+        console.error('[stream] Erreur lors de la récupération du contenu audio:', audioError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération du contenu audio'
+        });
+      }
+      
     } catch (error) {
-      console.error('Erreur lors du streaming audio:', error);
+      console.error('[stream] Erreur lors du streaming audio:', error);
       res.status(500).json({
         success: false,
-        message: 'Erreur lors du streaming audio: ' + error.message
+        message: 'Erreur lors du streaming audio'
       });
     }
   },
@@ -417,7 +491,7 @@ const RecordingController = {
       res.json({ success: true, shared: sharedWithFormattedNames });
     } catch (error) {
       console.error('[getSharedWithMe] Erreur:', error);
-      res.status(500).json({ success: false, message: "Erreur lors de la récupération des enregistrements partagés." });
+      res.status(500).json({ success: false, message: 'Erreur lors de la récupération des enregistrements partagés.' });
     }
   },
 
@@ -437,7 +511,7 @@ const RecordingController = {
       if (!hasEditAccess) {
         return res.status(403).json({
           success: false,
-          message: "Vous n'avez pas les droits pour modifier cet enregistrement"
+          message: 'Vous n\'avez pas les droits pour modifier cet enregistrement'
         });
       }
       
@@ -447,7 +521,7 @@ const RecordingController = {
       if (!success) {
         return res.status(500).json({
           success: false,
-          message: "Erreur lors de la mise à jour de l'enregistrement"
+          message: 'Erreur lors de la mise à jour de l\'enregistrement'
         });
       }
       
@@ -456,7 +530,7 @@ const RecordingController = {
       
       res.json({
         success: true,
-        message: "Enregistrement mis à jour avec succès",
+        message: 'Enregistrement mis à jour avec succès',
         recording: updatedRecording
       });
     } catch (error) {
@@ -464,6 +538,257 @@ const RecordingController = {
       res.status(500).json({ 
         success: false,
         message: 'Erreur lors de la mise à jour de l\'enregistrement' 
+      });
+    }
+  },
+
+  /**
+   * Partage un enregistrement avec un token d'accès unique
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
+   */
+  shareWithToken: async (req, res) => {
+    try {
+      const recordingId = parseInt(req.params.id);
+      const sourceUserId = req.user.id;
+      const { permissions, maxUses, expiration } = req.body;
+      
+      // Créer un partage avec token
+      const shareInfo = await Recording.shareWithToken(recordingId, sourceUserId, permissions, {
+        maxUses: maxUses ? parseInt(maxUses) : null,
+        expiration: expiration || null
+      });
+      
+      // Retourner les infos du partage, incluant le token et le secret
+      res.json({
+        success: true,
+        message: 'Enregistrement partagé avec succès via token d\'accès',
+        shareInfo
+      });
+    } catch (error) {
+      console.error('Erreur lors du partage de l\'enregistrement avec token:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Erreur lors du partage de l\'enregistrement avec token d\'accès'
+      });
+    }
+  },
+
+  /**
+   * Récupère les informations d'un enregistrement partagé par token
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
+   */
+  getRecordingInfoWithToken: async (req, res) => {
+    try {
+      const token = req.query.token;
+      
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token d\'accès requis'
+        });
+      }
+      
+      // Récupérer les infos de l'enregistrement
+      const recordingInfo = await Recording.getRecordingInfoWithToken(token);
+      
+      res.json({
+        success: true,
+        recording: recordingInfo
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des informations de l\'enregistrement:', error);
+      res.status(403).json({
+        success: false,
+        message: error.message || 'Erreur lors de la récupération des informations de l\'enregistrement'
+      });
+    }
+  },
+
+  /**
+   * Accède à un enregistrement avec un token et un secret
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
+   */
+  streamWithToken: async (req, res) => {
+    try {
+      const token = req.query.token;
+      const secret = req.query.secret;
+      const isProbe = req.query.probe === 'true'; // Mode de sondage pour vérification sans streaming
+      
+      // Validation des inputs
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token d\'accès requis'
+        });
+      }
+      
+      if (!secret) {
+        return res.status(400).json({
+          success: false,
+          message: 'Secret d\'accès requis'
+        });
+      }
+      
+      // Journalisation de la tentative d'accès
+      console.log(`[CONTROLLER] Tentative d'accès à un enregistrement avec token: ${token.substring(0, 8)}... (probe: ${isProbe})`);
+      
+      try {
+        // Récupérer le contenu audio avec le token et le secret
+        const { audio, metadata } = await Recording.getAudioContentWithToken(token, secret);
+        
+        // En mode probe, ne pas envoyer l'audio, juste confirmer que tout est OK
+        if (isProbe) {
+          return res.json({
+            success: true,
+            message: 'Vérification réussie, les données audio sont disponibles',
+            metadata: {
+              name: metadata.name,
+              size: audio.length,
+              duration: metadata.duration,
+              format: metadata.audioFormat || 'unknown'
+            }
+          });
+        }
+        
+        // Déterminer si c'est une demande de téléchargement
+        const isDownload = req.query.download === 'true';
+        
+        // Déterminer le type MIME basé sur le format audio détecté ou stocké dans les métadonnées
+        let contentType = 'audio/webm'; // Type par défaut
+        let fileExtension = 'webm';     // Extension par défaut
+        
+        // Utiliser d'abord le format des métadonnées s'il existe
+        if (metadata.audioFormat) {
+          switch (metadata.audioFormat) {
+          case 'webm':
+            contentType = 'audio/webm';
+            fileExtension = 'webm';
+            break;
+          case 'mp3':
+            contentType = 'audio/mpeg';
+            fileExtension = 'mp3';
+            break;
+          case 'ogg':
+            contentType = 'audio/ogg';
+            fileExtension = 'ogg';
+            break;
+          case 'wav':
+            contentType = 'audio/wav';
+            fileExtension = 'wav';
+            break;
+          }
+        } 
+        // Si aucun format n'est spécifié dans les métadonnées, tenter de détecter à partir du contenu
+        else {
+          // Vérifier si c'est un format WebM (commence par 1A 45 DF A3)
+          if (audio.length > 4 && 
+              audio[0] === 0x1A && 
+              audio[1] === 0x45 && 
+              audio[2] === 0xDF && 
+              audio[3] === 0xA3) {
+            contentType = 'audio/webm';
+            fileExtension = 'webm';
+          } 
+          // Vérifier si c'est un format MP3 (commence par ID3 ou FF FB)
+          else if (audio.length > 3 && 
+                  ((audio[0] === 0x49 && audio[1] === 0x44 && audio[2] === 0x33) || 
+                   (audio[0] === 0xFF && (audio[1] & 0xE0) === 0xE0))) {
+            contentType = 'audio/mpeg';
+            fileExtension = 'mp3';
+          }
+          // Format OGG Vorbis (commence par "OggS")
+          else if (audio.length > 4 && 
+                  audio[0] === 0x4F && audio[1] === 0x67 && 
+                  audio[2] === 0x67 && audio[3] === 0x53) {
+            contentType = 'audio/ogg';
+            fileExtension = 'ogg';
+          }
+          // Format WAV (commence par "RIFF" suivi de "WAVE")
+          else if (audio.length > 12 && 
+                  audio[0] === 0x52 && audio[1] === 0x49 && 
+                  audio[2] === 0x46 && audio[3] === 0x46 &&
+                  audio[8] === 0x57 && audio[9] === 0x41 && 
+                  audio[10] === 0x56 && audio[11] === 0x45) {
+            contentType = 'audio/wav';
+            fileExtension = 'wav';
+          }
+          else {
+            // Si le format n'est pas reconnu, utiliser un type générique
+            contentType = 'application/octet-stream';
+            fileExtension = 'bin';
+            console.log('[CONTROLLER] Format audio non reconnu. Premiers octets:', 
+              audio.slice(0, 16).toString('hex'));
+          }
+        }
+        
+        // Log détaillé des informations de format
+        console.log(`[CONTROLLER] Format audio: ${metadata.audioFormat || 'non spécifié dans les métadonnées'}`);
+        console.log(`[CONTROLLER] Content-Type déterminé: ${contentType}`);
+        console.log(`[CONTROLLER] Taille des données audio: ${audio.length} octets`);
+        console.log(`[CONTROLLER] Premiers octets: ${audio.slice(0, 16).toString('hex')}`);
+        
+        // Configurer les en-têtes de réponse
+        res.set('Content-Type', contentType);
+        
+        // Autres en-têtes pour améliorer la compatibilité
+        res.set('Accept-Ranges', 'bytes');
+        res.set('Cache-Control', 'no-cache, no-transform');
+        res.set('Access-Control-Allow-Origin', '*');
+        
+        if (isDownload) {
+          res.set('Content-Disposition', `attachment; filename="${metadata.name || 'audio'}.${fileExtension}"`);
+        } else {
+          res.set('Content-Disposition', `inline; filename="${metadata.name || 'audio'}.${fileExtension}"`);
+        }
+        
+        // Journalisation du succès
+        console.log(`[CONTROLLER] Accès réussi à l'enregistrement avec token: ${token.substring(0, 8)}...`);
+        
+        // Envoyer les données audio
+        res.send(audio);
+      } catch (error) {
+        // Différencier les types d'erreur
+        console.error('[CONTROLLER] Erreur lors de l\'accès à l\'enregistrement avec token:', error);
+        
+        const errorResponse = {
+          success: false,
+          message: error.message || 'Erreur lors de l\'accès à l\'enregistrement',
+          errorType: 'unknown',
+          timestamp: new Date().toISOString()
+        };
+        
+        if (error.message.includes('Token de partage invalide')) {
+          errorResponse.errorType = 'invalid_token';
+          return res.status(403).json(errorResponse);
+        } else if (error.message.includes('partage a expiré')) {
+          errorResponse.errorType = 'expired_token';
+          return res.status(403).json(errorResponse);
+        } else if (error.message.includes('Secret d\'accès invalide')) {
+          errorResponse.errorType = 'invalid_secret';
+          return res.status(401).json(errorResponse);
+        } else if (error.message.includes('lecture du fichier')) {
+          errorResponse.errorType = 'file_not_found';
+          return res.status(500).json(errorResponse);
+        } else if (error.message.includes('déchiffrement')) {
+          errorResponse.errorType = 'decryption_error';
+          return res.status(400).json(errorResponse);
+        } else if (error.message.includes('format de fichier')) {
+          errorResponse.errorType = 'invalid_format';
+          return res.status(500).json(errorResponse);
+        } else {
+          return res.status(500).json(errorResponse);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur générale dans streamWithToken:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur serveur lors du traitement de la demande',
+        errorType: 'server_error',
+        timestamp: new Date().toISOString()
       });
     }
   }

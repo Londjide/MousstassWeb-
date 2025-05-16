@@ -8,9 +8,42 @@ const profileService = {
      */
     async getUserProfile() {
       try {
-        const response = await fetch('/api/users/profile', {
+        // IMPORTANT: Synchroniser entre localStorage et cookies avant la requête
+        const token = localStorage.getItem('moustass_token');
+        
+        // Si aucun token, essayer de le récupérer des cookies
+        if (!token) {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith('token=') || cookie.startsWith('moustass_token=')) {
+              const cookieToken = cookie.split('=')[1];
+              if (cookieToken && cookieToken.length > 10) {
+                localStorage.setItem('moustass_token', cookieToken);
+                console.log("Token récupéré des cookies pour la requête");
+                break;
+              }
+            }
+          }
+        } 
+        // Si token présent, synchroniser avec les cookies
+        else {
+          document.cookie = `token=${token}; path=/; SameSite=Strict; max-age=86400`;
+          document.cookie = `moustass_token=${token}; path=/; SameSite=Strict; max-age=86400`;
+        }
+        
+        // Récupérer le token à jour
+        const currentToken = localStorage.getItem('moustass_token');
+        
+        // Si toujours pas de token, impossible de continuer
+        if (!currentToken) {
+          throw new Error('Aucun token disponible, connexion requise');
+        }
+        
+        // Faire la requête avec le token mis à jour
+        const response = await fetch('http://localhost:3000/api/users/profile', {
           headers: { 
-            'Authorization': 'Bearer ' + localStorage.getItem('moustass_token')
+            'Authorization': 'Bearer ' + currentToken
           }
         });
         
@@ -18,6 +51,11 @@ const profileService = {
           // Si le serveur est indisponible, indiquer clairement l'erreur
           if (response.status === 500) {
             throw new Error('Le serveur est actuellement indisponible. Impossible de récupérer votre profil.');
+          }
+          
+          if (response.status === 401) {
+            const data = await response.json();
+            throw new Error(data.message || 'Token invalide ou expiré');
           }
           
           const data = await response.json();
@@ -67,7 +105,7 @@ const profileService = {
           full_name: data.full_name
         };
         
-        const response = await fetch('/api/users/profile', {
+        const response = await fetch('http://localhost:3000/api/users/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -108,7 +146,7 @@ const profileService = {
      */
     async changePassword(currentPassword, newPassword) {
       try {
-        const response = await fetch('/api/auth/change-password', {
+        const response = await fetch('http://localhost:3000/api/auth/change-password', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -149,7 +187,7 @@ const profileService = {
         localStorage.setItem('moustass_preferences', JSON.stringify(preferences));
         
         // Tenter d'enregistrer également sur le serveur si une API existe
-        const response = await fetch('/api/users/preferences', {
+        const response = await fetch('http://localhost:3000/api/users/preferences', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -509,7 +547,7 @@ function initPhotoUpload() {
       const formData = new FormData();
       formData.append('photo', photoInput.files[0]);
       
-      const response = await fetch('/api/users/photo', {
+      const response = await fetch('http://localhost:3000/api/users/photo', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + localStorage.getItem('moustass_token')
@@ -571,7 +609,7 @@ function renderAvatar(photoUrl) {
       try {
         const token = localStorage.getItem('moustass_token');
         if (token) {
-          const response = await fetch('/api/users/profile', {
+          const response = await fetch('http://localhost:3000/api/users/profile', {
             headers: { 'Authorization': 'Bearer ' + token }
           });
           const data = await response.json();

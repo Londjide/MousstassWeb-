@@ -155,7 +155,7 @@
                 </div>
                 <div class="form-group">
                     <label for="login-password">Mot de passe</label>
-                    <input type="password" id="login-password" required>
+                    <input type="password" id="login-password" required autocomplete="current-password">
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Se connecter</button>
@@ -185,11 +185,11 @@
                 </div>
                 <div class="form-group">
                     <label for="register-password">Mot de passe</label>
-                    <input type="password" id="register-password" required>
+                    <input type="password" id="register-password" required autocomplete="new-password">
                 </div>
                 <div class="form-group">
                     <label for="register-confirm-password">Confirmer le mot de passe</label>
-                    <input type="password" id="register-confirm-password" required>
+                    <input type="password" id="register-confirm-password" required autocomplete="new-password">
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">S'inscrire</button>
@@ -207,33 +207,6 @@
     <script src="/assets/js/app.js"></script>
     <script src="/assets/js/main.js"></script>
     
-    <!-- Script de diagnostic -->
-    <script>
-        console.log("Application chargée avec configuration complète");
-        
-        // Forcer le chargement complet de l'application
-        document.addEventListener('DOMContentLoaded', function() {
-            const loadingElement = document.getElementById('loading');
-            if (loadingElement) {
-                loadingElement.style.display = 'none';
-            }
-            
-            const appContainer = document.getElementById('app-container');
-            if (appContainer) {
-                appContainer.style.display = 'block';
-                appContainer.style.opacity = '1';
-            }
-
-            // CRUCIAL - Synchroniser le token JWT du localStorage vers les cookies
-            const token = localStorage.getItem('moustass_token');
-            if (token) {
-                // Créer un cookie sécurisé avec le token pour les requêtes de page
-                document.cookie = `token=${token}; path=/; SameSite=Strict`;
-                console.log("Token JWT synchronisé du localStorage vers les cookies");
-            } else {
-                console.log("Pas de token JWT trouvé dans localStorage");
-            }
-        });
-    </script>
+        <!-- Script de diagnostic -->    <script>        console.log("Application chargée avec configuration complète");                // Forcer le chargement complet de l'application        document.addEventListener('DOMContentLoaded', function() {            console.log("=== DOMContentLoaded - DÉBUT ===");                        const loadingElement = document.getElementById('loading');            if (loadingElement) {                loadingElement.style.display = 'none';            }                        const appContainer = document.getElementById('app-container');            if (appContainer) {                appContainer.style.display = 'block';                appContainer.style.opacity = '1';            }                        // CRUCIAL - Vérifier à nouveau la synchronisation du token            const token = localStorage.getItem('moustass_token');            console.log("Token dans DOMContentLoaded:", token ? `${token.substring(0, 10)}...` : "AUCUN");                        if (token) {                console.log("Établissement des cookies dans DOMContentLoaded");                // Créer un cookie sécurisé avec le token pour les requêtes de page                document.cookie = `token=${token}; path=/; SameSite=Strict; max-age=86400`;                document.cookie = `moustass_token=${token}; path=/; SameSite=Strict; max-age=86400`;                console.log("Token JWT synchronisé du localStorage vers les cookies (2ème vérification)");                                // Forcer la vérification de l'état d'authentification                if (typeof auth !== 'undefined') {                    console.log("Délai de 50ms avant de vérifier l'authentification...");                    setTimeout(() => {                        console.log("Lancement de auth.checkAuthentication() différé");                        auth.checkAuthentication();                    }, 50);                } else {                    console.log("ERREUR: Objet auth non disponible");                }            } else {                console.log("Pas de token trouvé dans localStorage pendant DOMContentLoaded");            }                        // Vérifier l'état des cookies à la fin            console.log("État des cookies à la fin de DOMContentLoaded:");            document.cookie.split(';').forEach(cookie => {                const trimmedCookie = cookie.trim();                if (trimmedCookie.startsWith('token=') || trimmedCookie.startsWith('moustass_token=')) {                    const parts = trimmedCookie.split('=');                    console.log(`- ${parts[0]}: ${parts[1] ? parts[1].substring(0, 10) + '...' : "VIDE"}`);                }            });                        console.log("=== DOMContentLoaded - FIN ===");        });    </script>
 </body>
 </html>

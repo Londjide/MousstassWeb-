@@ -8,6 +8,61 @@ const AccessLogModel = require('../models/accesslog.model');
  * Contrôleur pour gérer l'authentification
  */
 const AuthController = {
+  // Map pour suivre les tentatives de connexion échouées
+  loginAttempts: new Map(),
+  
+  /**
+   * Vérifie la force du mot de passe
+   * @param {string} password - Mot de passe à vérifier 
+   * @returns {boolean} Vrai si le mot de passe est assez fort
+   */
+  checkPasswordStrength(password) {
+    if (!password || password.length < 8) return false;
+    
+    // Vérifier différents critères de complexité
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    // Le mot de passe doit respecter au moins 3 des 4 critères
+    return (hasUppercase + hasLowercase + hasNumbers + hasSpecialChars) >= 3;
+  },
+  
+  /**
+   * Vérifie si l'adresse IP est bloquée
+   * @param {string} ip - Adresse IP à vérifier
+   * @returns {boolean} Vrai si l'adresse IP est bloquée
+   */
+  isIpBlocked(ip) {
+    const attempts = this.loginAttempts.get(ip);
+    if (!attempts) return false;
+    
+    // Bloquer après 5 tentatives échouées pendant 15 minutes
+    if (attempts.count >= 5) {
+      const blockExpiration = attempts.timestamp + 15 * 60 * 1000; // 15 minutes
+      if (Date.now() < blockExpiration) {
+        return true;
+      } else {
+        // Réinitialiser les tentatives après la période de blocage
+        this.loginAttempts.delete(ip);
+        return false;
+      }
+    }
+    return false;
+  },
+  
+  /**
+   * Enregistre une tentative de connexion échouée
+   * @param {string} ip - Adresse IP à enregistrer
+   */
+  recordFailedAttempt(ip) {
+    const attempts = this.loginAttempts.get(ip) || { count: 0, timestamp: Date.now() };
+    attempts.count += 1;
+    attempts.timestamp = Date.now();
+    this.loginAttempts.set(ip, attempts);
+  },
+  
   /**
    * Inscription d'un nouvel utilisateur
    * @param {Object} req - Requête Express
@@ -23,6 +78,14 @@ const AuthController = {
 
       const { username, email, full_name, password } = req.body;
 
+      // Vérifier la force du mot de passe
+      if (!AuthController.checkPasswordStrength(password)) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Le mot de passe doit contenir au moins 8 caractères et combiner majuscules, minuscules, chiffres et caractères spéciaux' 
+        });
+      }
+      
       // Vérifier si l'email existe déjà
       const existingUser = await UserModel.findByEmail(email);
       if (existingUser) {
@@ -44,11 +107,11 @@ const AuthController = {
         });
       }
 
-      // Générer le token JWT avec expiration à 1h
+      // Générer le token JWT avec expiration à 7 jours
       const token = jwt.sign(
         { id: user.id, email: user.email },
         process.env.JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '7d' }
       );
 
       res.status(201).json({
@@ -81,6 +144,16 @@ const AuthController = {
     try {
       console.log('Tentative de connexion avec les données:', JSON.stringify(req.body));
       
+      // Vérifier si l'IP est bloquée pour cause de trop nombreuses tentatives
+      const clientIp = req.ip;
+      if (AuthController.isIpBlocked(clientIp)) {
+        console.log(`Tentative de connexion bloquée pour l'IP: ${clientIp} (trop de tentatives)`);
+        return res.status(429).json({
+          success: false,
+          message: 'Trop de tentatives infructueuses. Réessayez dans 15 minutes.'
+        });
+      }
+      
       // Validation des données
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -109,6 +182,8 @@ const AuthController = {
       
       if (!user) {
         console.log(`Échec d'authentification pour l'email: ${email}`);
+        // Enregistrer la tentative échouée
+        AuthController.recordFailedAttempt(clientIp);
         return res.status(401).json({ 
           success: false,
           message: 'Email ou mot de passe incorrect' 
@@ -116,6 +191,9 @@ const AuthController = {
       }
 
       console.log(`Authentification réussie pour l'utilisateur: ${user.email}`);
+      
+      // Réinitialiser les tentatives de connexion pour cette IP
+      AuthController.loginAttempts.delete(clientIp);
 
       // Vérifier que JWT_SECRET est défini
       if (!process.env.JWT_SECRET) {
@@ -126,11 +204,11 @@ const AuthController = {
         });
       }
 
-      // Générer le token JWT avec expiration à 1h
+      // Générer le token JWT avec expiration à 7 jours
       const token = jwt.sign(
         { id: user.id, email: user.email },
         process.env.JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '7d' }
       );
       
       console.log(`Token généré pour l'utilisateur: ${user.email}`);

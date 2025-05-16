@@ -1,0 +1,24 @@
+@startuml MousstassWeb - Diagramme de Contexte
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title "Diagramme de Contexte - MousstassWeb"
+
+Person(utilisateur, "Utilisateur", "Personne qui utilise l'application pour enregistrer et partager des conversations audio")
+Person(destinataire, "Destinataire", "Personne qui reçoit des enregistrements partagés")
+
+System(mousstassweb, "MousstassWeb", "Permet d'enregistrer des conversations audio, de les chiffrer et de les partager de façon sécurisée")
+
+System_Ext(serviceMail, "Service de messagerie", "Service externe pour l'envoi de notifications et invitations par email")
+System_Ext(stockageCloud, "Stockage en nuage", "Stockage externe optionnel pour la sauvegarde des enregistrements")
+
+Rel(utilisateur, mousstassweb, "Enregistre, gère et partage les conversations audio")
+Rel(mousstassweb, destinataire, "Envoie des notifications de partage")
+Rel(destinataire, mousstassweb, "Accède aux enregistrements partagés")
+
+Rel(mousstassweb, serviceMail, "Envoie des notifications par email")
+Rel(mousstassweb, stockageCloud, "Stocke des sauvegardes chiffrées")
+
+@enduml 

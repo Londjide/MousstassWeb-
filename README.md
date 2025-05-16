@@ -2,6 +2,10 @@
 
 Application web sécurisée pour l'enregistrement et le partage audio avec chiffrement hybride AES/RSA.
 
+[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/summary/new_code?id=Londjide_MousstassWeb-)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Londjide_MousstassWeb-&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Londjide_MousstassWeb-)
+[![CI/CD Pipeline](https://github.com/Londjide/MousstassWeb-/actions/workflows/build.yml/badge.svg)](https://github.com/Londjide/MousstassWeb-/actions/workflows/build.yml)
+
 ## Fonctionnalités
 
 - **Enregistrement audio** : Capture et stockage d'enregistrements audio
@@ -18,32 +22,34 @@ Application web sécurisée pour l'enregistrement et le partage audio avec chiff
 ## Installation
 
 1. Cloner le dépôt :
+
    ```
    git clone https://github.com/votre-nom/missie-moustass-web.git
    cd missie-moustass-web
    ```
-
 2. Installer les dépendances :
+
    ```
    npm install
    ```
-
 3. Configurer la base de données :
+
    - Créer une base de données MySQL nommée `moustass_web`
    - Modifier le fichier `.env` si nécessaire pour ajuster les paramètres de connexion
-
 4. Démarrer l'application :
+
    - Sous Windows : double-cliquer sur `start.bat`
    - Sous Linux/Mac : `./start.sh`
    - Ou manuellement : `npm start`
-
 5. Accéder à l'application :
+
    - Ouvrir `frontend/public/index.html` dans votre navigateur
    - Ou accéder à `http://localhost:3000` si vous avez configuré un serveur pour le frontend
 
 ## Structure du projet
 
 - `backend/` : Serveur API Express.js
+
   - `db/` : Scripts d'initialisation de la base de données
   - `src/` : Code source du backend
     - `controllers/` : Contrôleurs pour les routes API
@@ -53,8 +59,8 @@ Application web sécurisée pour l'enregistrement et le partage audio avec chiff
     - `utils/` : Utilitaires divers
   - `uploads/` : Stockage des fichiers audio chiffrés
   - `temp/` : Stockage temporaire pour les uploads
-
 - `frontend/` : Interface utilisateur
+
   - `public/` : Contenu statique
     - `assets/` : Ressources (CSS, JS, images)
     - `index.html` : Page principale
@@ -62,6 +68,7 @@ Application web sécurisée pour l'enregistrement et le partage audio avec chiff
 ## Sécurité
 
 L'application utilise un chiffrement hybride pour protéger les données audio :
+
 - Chiffrement AES-256 pour les fichiers audio
 - Chiffrement RSA pour les clés AES
 - Clés de chiffrement uniques par enregistrement et par partage

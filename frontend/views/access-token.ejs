@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accéder à l'enregistrement sécurisé - Missié Moustass Web</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Écran de chargement -->
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <p>Chargement de l'application...</p>
+    </div>
+
+    <div class="container" id="app-container">
+        <header>
+            <div class="logo">
+                <img src="/assets/images/favicon.svg" alt="Missié Moustass Web Logo">
+                <h1>Missié Moustass Web</h1>
+            </div>
+        </header>
+        
+        <main>
+            <section class="access-token-section">
+                <h2>Accéder à l'enregistrement sécurisé</h2>
+                
+                <div id="token-entry" class="token-entry-form">
+                    <p>Cet enregistrement est protégé par un token d'accès et un secret. Veuillez saisir les informations d'accès fournies.</p>
+                    
+                    <div class="token-instructions">
+                        <p><strong>Instructions :</strong></p>
+                        <ol>
+                            <li>Entrez le token d'accès fourni (déjà prérempli si vous avez cliqué sur un lien)</li>
+                            <li>Entrez le secret d'accès qui vous a été communiqué séparément</li>
+                            <li>Attention à ne pas inclure d'espaces supplémentaires</li>
+                        </ol>
+                    </div>
+                    
+                    <form id="access-form">
+                        <div class="form-group">
+                            <label for="access-token">Token d'accès</label>
+                            <input type="text" id="access-token" placeholder="Token d'accès" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="access-secret">Secret d'accès</label>
+                            <input type="text" id="access-secret" placeholder="Secret d'accès" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Accéder à l'enregistrement</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div id="loading" class="loading-spinner" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Vérification des informations d'accès et déchiffrement de l'enregistrement...</p>
+                </div>
+                
+                <div id="recording-info" class="recording-info-panel" style="display: none;">
+                    <div class="recording-owner">
+                        <div class="avatar" id="owner-avatar"></div>
+                        <div class="owner-details">
+                            <h3 id="owner-name">Nom du propriétaire</h3>
+                            <span id="owner-email">Email du propriétaire</span>
+                        </div>
+                    </div>
+                    
+                    <div class="recording-details">
+                        <h3 id="recording-title">Titre de l'enregistrement</h3>
+                        <p id="recording-description">Description de l'enregistrement</p>
+                        <div class="recording-meta">
+                            <span id="recording-date">Date d'enregistrement</span>
+                            <span id="recording-duration">Durée</span>
+                        </div>
+                    </div>
+                    
+                    <div class="recording-actions">
+                        <button id="load-recording-btn" class="btn btn-primary">Charger l'enregistrement</button>
+                    </div>
+                </div>
+                
+                <div id="player-container" class="player-container" style="display: none;">
+                    <div class="audio-player">
+                        <audio id="audio-player" controls></audio>
+                    </div>
+                    
+                    <div class="player-actions">
+                        <button id="download-btn" class="btn btn-outline">Télécharger</button>
+                    </div>
+                </div>
+                
+                <div id="error-message" class="error-message" style="display: none;">
+                    <p id="error-text">Une erreur est survenue lors de l'accès à l'enregistrement.</p>
+                    <button id="retry-btn" class="btn btn-primary">Réessayer</button>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>&copy; <%= new Date().getFullYear() %> Missié Moustass Web</p>
+            <ul class="footer-links">
+                <li><a href="/">Accueil</a></li>
+                <li><a href="/about">À propos</a></li>
+                <li><a href="/privacy">Confidentialité</a></li>
+            </ul>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Masquer l'écran de chargement
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-container').style.opacity = '1';
+            
+            // Éléments DOM
+            const urlParams = new URLSearchParams(window.location.search);
+            const providedToken = urlParams.get('token');
+            const accessForm = document.getElementById('access-form');
+            const accessToken = document.getElementById('access-token');
+            const accessSecret = document.getElementById('access-secret');
+            const tokenEntry = document.getElementById('token-entry');
+            const loadingEl = document.getElementById('loading');
+            const recordingInfoEl = document.getElementById('recording-info');
+            const playerContainer = document.getElementById('player-container');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            const retryBtn = document.getElementById('retry-btn');
+            const loadRecordingBtn = document.getElementById('load-recording-btn');
+            const audioPlayer = document.getElementById('audio-player');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            // Si un token est fourni dans l'URL, le préremplir
+            if (providedToken) {
+                accessToken.value = providedToken;
+            }
+            
+            // Gestion du formulaire d'accès
+            accessForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const token = accessToken.value.trim();
+                
+                if (!token) {
+                    showError('Veuillez entrer un token d\'accès.');
+                    return;
+                }
+                
+                // Afficher le chargement
+                tokenEntry.style.display = 'none';
+                loadingEl.style.display = 'block';
+                recordingInfoEl.style.display = 'none';
+                playerContainer.style.display = 'none';
+                errorMessage.style.display = 'none';
+                
+                try {
+                    // Récupérer les informations sur l'enregistrement
+                    const infoResponse = await fetch(`/api/recordings/token-info?token=${encodeURIComponent(token)}`);
+                    
+                    if (!infoResponse.ok) {
+                        const errorData = await infoResponse.json();
+                        throw new Error(errorData.message || 'Token invalide ou enregistrement non trouvé.');
+                    }
+                    
+                    const infoData = await infoResponse.json();
+                    const recording = infoData.recording;
+                    
+                    // Mise à jour des informations
+                    document.getElementById('recording-title').textContent = recording.name || 'Enregistrement sans titre';
+                    document.getElementById('recording-description').textContent = recording.description || 'Aucune description';
+                    
+                    // Vérifier que owner existe et a les propriétés nécessaires
+                    if (recording.owner) {
+                        document.getElementById('owner-name').textContent = recording.owner.name || recording.owner.email || 'Utilisateur inconnu';
+                        document.getElementById('owner-email').textContent = recording.owner.email || '';
+                        
+                        // Générer un avatar avec les initiales
+                        const ownerName = recording.owner.name || recording.owner.email || 'U';
+                        const ownerInitials = ownerName.substring(0, 2).toUpperCase();
+                        document.getElementById('owner-avatar').textContent = ownerInitials;
+                    } else {
+                        // Valeurs par défaut si owner n'existe pas
+                        document.getElementById('owner-name').textContent = 'Utilisateur inconnu';
+                        document.getElementById('owner-email').textContent = '';
+                        document.getElementById('owner-avatar').textContent = 'UN';
+                    }
+                    
+                    // Formater la date et la durée
+                    if (recording.timestamp) {
+                        const timestamp = new Date(recording.timestamp);
+                        const formattedDate = new Intl.DateTimeFormat('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }).format(timestamp);
+                        document.getElementById('recording-date').textContent = formattedDate;
+                    } else {
+                        document.getElementById('recording-date').textContent = 'Date inconnue';
+                    }
+                    
+                    if (recording.duration !== undefined) {
+                        const minutes = Math.floor(recording.duration / 60);
+                        const seconds = (recording.duration % 60).toString().padStart(2, '0');
+                        const formattedDuration = `${minutes}:${seconds}`;
+                        document.getElementById('recording-duration').textContent = formattedDuration;
+                    } else {
+                        document.getElementById('recording-duration').textContent = 'Durée inconnue';
+                    }
+                    
+                    // Masquer le chargement et afficher les infos
+                    loadingEl.style.display = 'none';
+                    recordingInfoEl.style.display = 'block';
+                    
+                    // Configurer le bouton pour charger l'enregistrement
+                    loadRecordingBtn.onclick = () => {
+                        loadRecording(token, accessSecret.value.trim());
+                    };
+                    
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showError(error.message || 'Une erreur est survenue lors de l\'accès à l\'enregistrement.');
+                }
+            });
+            
+            // Fonction pour charger et lire l'enregistrement
+            async function loadRecording(token, secret) {
+                if (!secret) {
+                    showError('Veuillez entrer un secret d\'accès.');
+                    return;
+                }
+                
+                // Nettoyer le secret (supprimer les espaces superflus)
+                const cleanSecret = secret.trim();
+                if (cleanSecret.length < 8) {
+                    showError('Le secret d\'accès semble trop court. Vérifiez qu\'il est complet.');
+                    return;
+                }
+                
+                recordingInfoEl.style.display = 'none';
+                loadingEl.style.display = 'block';
+                errorMessage.style.display = 'none';
+                
+                try {
+                    // Vérifier d'abord si le token est valide
+                    try {
+                        const checkResponse = await fetch(`/api/recordings/token-info?token=${encodeURIComponent(token)}`);
+                        if (!checkResponse.ok) {
+                            const errorData = await checkResponse.json();
+                            throw new Error(errorData.message || 'Token invalide');
+                        }
+                    } catch (checkError) {
+                        console.error('Erreur de vérification:', checkError);
+                        showError('Le token fourni n\'est plus valide. ' + checkError.message);
+                        return;
+                    }
+                    
+                    console.log('Téléchargement des données audio...');
+                    
+                    // URL de l'audio
+                    const audioUrl = `/api/recordings/token-stream?token=${encodeURIComponent(token)}&secret=${encodeURIComponent(cleanSecret)}`;
+                    
+                    // Télécharger les données audio
+                    const response = await fetch(audioUrl);
+                    if (!response.ok) {
+                        throw new Error('Erreur lors du téléchargement audio: ' + response.status);
+                    }
+                    
+                    // Récupérer les données binaires
+                    const audioData = await response.arrayBuffer();
+                    console.log(`Données audio téléchargées: ${audioData.byteLength} octets`);
+                    
+                    // Liste des types MIME à essayer
+                    const mimeTypes = [
+                        'audio/webm',
+                        'audio/mpeg',
+                        'audio/ogg',
+                        'audio/wav',
+                        'audio/mp4'
+                    ];
+                    
+                    // Supprimer l'ancien lecteur et créer un nouveau
+                    const audioPlayerWrapper = document.querySelector('.audio-player');
+                    audioPlayerWrapper.innerHTML = '';
+                    const newAudio = document.createElement('audio');
+                    newAudio.id = 'audio-player';
+                    newAudio.controls = true;
+                    audioPlayerWrapper.appendChild(newAudio);
+                    
+                    // Récupérer la référence au nouveau lecteur
+                    const audioPlayer = document.getElementById('audio-player');
+                    
+                    // Fonction pour essayer un format
+                    const tryFormat = (index) => {
+                        if (index >= mimeTypes.length) {
+                            // Tous les formats échouent, afficher une erreur
+                            showError('Format audio non supporté. Veuillez télécharger le fichier et l\'ouvrir avec un lecteur externe.');
+                            
+                            // Ajouter un lien de téléchargement direct
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = `${audioUrl}&download=true`;
+                            downloadLink.className = 'btn btn-primary';
+                            downloadLink.textContent = 'Télécharger l\'audio';
+                            downloadLink.style.marginTop = '10px';
+                            errorMessage.appendChild(downloadLink);
+                            
+                            return;
+                        }
+                        
+                        const mimeType = mimeTypes[index];
+                        console.log(`Essai du format: ${mimeType}`);
+                        
+                        // Créer un blob avec le type MIME
+                        const blob = new Blob([audioData], { type: mimeType });
+                        const blobUrl = URL.createObjectURL(blob);
+                        
+                        // Configurer les événements
+                        audioPlayer.onerror = () => {
+                            console.log(`Format ${mimeType} échoué, essai suivant...`);
+                            URL.revokeObjectURL(blobUrl);
+                            tryFormat(index + 1);
+                        };
+                        
+                        audioPlayer.oncanplay = () => {
+                            console.log(`Format ${mimeType} fonctionne!`);
+                            loadingEl.style.display = 'none';
+                            playerContainer.style.display = 'block';
+                            
+                            // Configurer le bouton de téléchargement
+                            downloadBtn.onclick = () => {
+                                window.location.href = `${audioUrl}&download=true`;
+                            };
+                        };
+                        
+                        // Essayer ce format
+                        audioPlayer.src = blobUrl;
+                    };
+                    
+                    // Commencer avec le premier format
+                    tryFormat(0);
+                    
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showError(error.message || 'Une erreur est survenue lors du chargement de l\'enregistrement.');
+                }
+            }
+            
+            // Fonction pour afficher une erreur
+            function showError(message) {
+                loadingEl.style.display = 'none';
+                recordingInfoEl.style.display = 'none';
+                playerContainer.style.display = 'none';
+                errorMessage.style.display = 'block';
+                errorText.textContent = message;
+            }
+            
+            // Bouton pour réessayer
+            retryBtn.addEventListener('click', () => {
+                errorMessage.style.display = 'none';
+                tokenEntry.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html> 

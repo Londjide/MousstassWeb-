@@ -95,11 +95,11 @@
       <form id="form-login">
         <div class="form-group">
           <label for="login-email">Email</label>
-          <input type="email" id="login-email" required>
+          <input type="email" id="login-email" required autocomplete="email">
         </div>
         <div class="form-group">
           <label for="login-password">Mot de passe</label>
-          <input type="password" id="login-password" required>
+          <input type="password" id="login-password" required autocomplete="current-password">
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Se connecter</button>
@@ -116,23 +116,23 @@
       <form id="form-register">
         <div class="form-group">    
           <label for="register-full_name">Nom complet</label>
-          <input type="text" id="register-full_name" required>
+          <input type="text" id="register-full_name" required autocomplete="name">
         </div>
         <div class="form-group">
           <label for="register-username">Nom d'utilisateur</label>
-          <input type="text" id="register-username" required>
+          <input type="text" id="register-username" required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="register-email">Email</label>
-          <input type="email" id="register-email" required>
+          <input type="email" id="register-email" required autocomplete="email">
         </div>
         <div class="form-group">
           <label for="register-password">Mot de passe</label>
-          <input type="password" id="register-password" required>
+          <input type="password" id="register-password" required autocomplete="new-password">
         </div>
         <div class="form-group">
           <label for="register-confirm-password">Confirmer le mot de passe</label>
-          <input type="password" id="register-confirm-password" required>
+          <input type="password" id="register-confirm-password" required autocomplete="new-password">
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">S'inscrire</button>
@@ -142,13 +142,10 @@
     </div>
   </div>
   
-  <!-- Scripts communs -->
-  <script src="/assets/js/config.js"></script>
+  <!-- Scripts -->
   <script src="/assets/js/utils.js"></script>
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/auth.js"></script>
-  
-  <!-- Script spécifique à la page -->
   <script src="/assets/js/shared.js"></script>
   
   <!-- Script de diagnostic -->
@@ -161,7 +158,8 @@
       const token = localStorage.getItem('moustass_token');
       if (token) {
         // Créer un cookie sécurisé avec le token pour les requêtes de page
-        document.cookie = `token=${token}; path=/; SameSite=Strict`;
+        document.cookie = `token=${token}; path=/; SameSite=Strict; max-age=604800`;
+        document.cookie = `moustass_token=${token}; path=/; SameSite=Strict; max-age=604800`;
         console.log("Token JWT synchronisé du localStorage vers les cookies");
       } else {
         console.log("Pas de token JWT trouvé dans localStorage");

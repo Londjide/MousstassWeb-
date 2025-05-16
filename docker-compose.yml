@@ -8,32 +8,58 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: moustass_web
+      MYSQL_USER: moustass
+      MYSQL_PASSWORD: moustass_password
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./backend/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: mousstass_backend
     restart: always
     ports:
       - "3000:3000"
+      - "9229:9229"  # Port pour le debugger Node.js
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules  # Volume anonyme pour node_modules
     environment:
+      - NODE_ENV=development
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=root
       - DB_PASSWORD=root
       - DB_NAME=moustass_web
+      - JWT_SECRET=MoustassWeb 3.0
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    command: npm run debug
 
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: mousstass_frontend
     restart: always
     ports:
-      - "80:80"
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules  # Volume anonyme pour node_modules
+    environment:
+      - NODE_ENV=development
+      - BACKEND_URL=http://backend:3000
     depends_on:
       - backend
 

@@ -1,0 +1,517 @@
+<% /* Page Profil Utilisateur */ %>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Profil | Missié Moustass Web</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn btn-outline">Retour</a>
+            <h1>Mon Profil</h1>
+        </header>
+        
+        <div class="profile-container">
+            <div class="profile-sidebar">
+                <div class="profile-avatar-container">
+                    <div class="profile-avatar" id="profile-avatar">
+                        <!-- Affichage dynamique de la photo ou des initiales -->
+                    </div>
+                    <div class="profile-avatar-overlay">
+                        <label for="photo" class="photo-upload-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        </label>
+                    </div>
+                </div>
+                
+                <form id="photo-upload-form" enctype="multipart/form-data">
+                    <input type="file" id="photo" name="photo" accept="image/*" class="hidden-file-input">
+                    <button type="submit" class="btn btn-primary btn-photo-update">Mettre à jour</button>
+                </form>
+                
+                <div class="profile-info-summary">
+                    <h2 id="profile-fullname-display">...</h2>
+                    <p class="profile-username-display" id="profile-username-display">@...</p>
+                </div>
+            </div>
+            
+            <div class="profile-content">
+                <div class="profile-section-tabs">
+                    <button class="tab-btn active" data-tab="personal-info">Informations personnelles</button>
+                    <button class="tab-btn" data-tab="security">Sécurité</button>
+                    <button class="tab-btn" data-tab="preferences">Préférences</button>
+                </div>
+                
+                <div class="profile-sections">
+                    <!-- Section Informations personnelles -->
+                    <div class="profile-section active" id="personal-info">
+                        <h3>Informations personnelles</h3>
+                        <form id="profile-form" class="profile-edit-form">
+                            <div class="form-group">
+                                <label for="full_name">Nom complet</label>
+                                <input type="text" id="profile-fullname" name="full_name" class="profile-input" placeholder="Votre nom complet">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="username">Nom d'utilisateur</label>
+                                <input type="text" id="profile-username" name="username" class="profile-input" placeholder="Votre nom d'utilisateur" disabled>
+                                <small class="input-help">Le nom d'utilisateur ne peut pas être modifié</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="profile-email" name="email" class="profile-input" placeholder="Votre email" disabled>
+                                <small class="input-help">L'adresse email ne peut pas être modifiée</small>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                            </div>
+                            
+                            <div id="profile-status" class="status-message"></div>
+                        </form>
+                    </div>
+                    
+                    <!-- Section Sécurité -->
+                    <div class="profile-section" id="security">
+                        <h3>Sécurité</h3>
+                        <form id="password-form" class="profile-edit-form">
+                            <div class="form-group">
+                                <label for="current_password">Mot de passe actuel</label>
+                                <input type="password" id="current-password" name="current_password" class="profile-input" placeholder="Votre mot de passe actuel" autocomplete="current-password">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="new_password">Nouveau mot de passe</label>
+                                <input type="password" id="new-password" name="new_password" class="profile-input" placeholder="Nouveau mot de passe" autocomplete="new-password">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="confirm_password">Confirmer le mot de passe</label>
+                                <input type="password" id="confirm-password" name="confirm_password" class="profile-input" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password">
+                            </div>
+                            
+                            <div class="password-strength">
+                                <div class="strength-meter">
+                                    <div class="strength-bar" id="password-strength-bar"></div>
+                                </div>
+                                <div class="strength-text" id="password-strength-text">Force du mot de passe</div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Changer le mot de passe</button>
+                            </div>
+                            
+                            <div id="password-status" class="status-message"></div>
+                        </form>
+                    </div>
+                    
+                    <!-- Section Préférences -->
+                    <div class="profile-section" id="preferences">
+                        <h3>Préférences</h3>
+                        <form id="preferences-form" class="profile-edit-form">
+                            <div class="form-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="dark-mode" name="dark_mode">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">Mode sombre</span>
+                                </label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="notifications" name="notifications">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">Notifications</span>
+                                </label>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Enregistrer les préférences</button>
+                            </div>
+                            
+                            <div id="preferences-status" class="status-message"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/auth.js"></script>
+    <script src="/assets/js/utils.js"></script>
+    
+    <!-- Script pour assurer la persistance de la connexion -->
+    <script>
+        // Synchroniser les tokens entre localStorage et cookies
+        const token = localStorage.getItem('moustass_token');
+        if (token) {
+            // Définir les cookies si le token existe dans localStorage
+            document.cookie = `token=${token}; path=/; SameSite=Strict; max-age=86400`;
+            document.cookie = `moustass_token=${token}; path=/; SameSite=Strict; max-age=86400`;
+            console.log("Token synchronisé depuis localStorage vers les cookies");
+        } else {
+            // Vérifier si un token existe dans les cookies
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith('token=') || cookie.startsWith('moustass_token=')) {
+                    const cookieToken = cookie.split('=')[1];
+                    if (cookieToken && cookieToken.length > 10) {
+                        localStorage.setItem('moustass_token', cookieToken);
+                        console.log("Token récupéré depuis les cookies vers localStorage");
+                        break;
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="/assets/js/profile.js"></script>
+</body>
+</html>
+<style>
+/* Conteneur principal du profil */
+.profile-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  background: var(--background-light);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 30px rgba(0,0,0,0.08);
+}
+
+/* Sidebar avec photo et nom */
+.profile-sidebar {
+  flex: 1;
+  min-width: 250px;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+  color: #fff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Zone principale avec formulaires */
+.profile-content {
+  flex: 3;
+  min-width: 300px;
+  background: white;
+  padding: 0;
+}
+
+/* Conteneur de l'avatar */
+.profile-avatar-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 1.5rem;
+}
+
+/* Style photo de profil */
+.profile-avatar {
+  width: 150px !important;
+  height: 150px !important;
+  font-size: 3.5rem !important;
+  margin: 0 !important;
+  background: linear-gradient(45deg, #3f51b5, #7986cb) !important;
+  position: relative;
+  border: 4px solid rgba(255,255,255,0.2) !important;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Overlay pour l'icône de caméra */
+.profile-avatar-overlay {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--primary-dark);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid white;
+}
+
+.profile-avatar-overlay:hover {
+  transform: scale(1.1);
+}
+
+/* Style pour l'icône */
+.photo-upload-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+}
+
+.photo-upload-label svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Cache l'input file */
+.hidden-file-input {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+/* Bouton mise à jour photo */
+.btn-photo-update {
+  width: 100%;
+  max-width: 200px;
+  margin-top: 0.5rem;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.btn-photo-update:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* Informations résumées de l'utilisateur */
+.profile-info-summary {
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.profile-info-summary h2 {
+  margin-bottom: 0.3rem;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.profile-username-display {
+  font-size: 1rem;
+  opacity: 0.8;
+  margin-bottom: 1.5rem;
+}
+
+/* Onglets de navigation */
+.profile-section-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  opacity: 0.7;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  opacity: 1;
+}
+
+.tab-btn.active {
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--primary-color);
+  border-radius: 3px 3px 0 0;
+}
+
+/* Section de contenu */
+.profile-section {
+  padding: 2rem;
+  display: none;
+}
+
+.profile-section.active {
+  display: block;
+  animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-section h3 {
+  margin-bottom: 1.5rem;
+  color: var(--primary-dark);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+/* Formulaire */
+.profile-edit-form {
+  max-width: 600px;
+}
+
+.profile-edit-form .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.profile-edit-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.profile-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.profile-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(74,111,165,0.2);
+}
+
+.input-help {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: rgba(0,0,0,0.5);
+}
+
+/* Force du mot de passe */
+.password-strength {
+  margin: 1rem 0;
+}
+
+.strength-meter {
+  height: 5px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.strength-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(to right, #ff4d4d, #ffad4d, #4dff4d);
+  transition: width 0.3s;
+}
+
+.strength-text {
+  font-size: 0.85rem;
+  color: rgba(0,0,0,0.5);
+}
+
+/* Interrupteurs (toggles) */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 12px;
+  margin-right: 10px;
+  transition: all 0.3s;
+}
+
+.toggle-label input {
+  display: none;
+}
+
+.toggle-switch:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.toggle-label input:checked + .toggle-switch {
+  background-color: var(--primary-color);
+}
+
+.toggle-label input:checked + .toggle-switch:before {
+  transform: translateX(26px);
+}
+
+/* Messages de statut */
+.status-message {
+  margin-top: 1rem;
+  padding: 10px;
+  border-radius: 8px;
+  display: none;
+}
+
+.status-message.success {
+  display: block;
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.status-message.error {
+  display: block;
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-container {
+    flex-direction: column;
+  }
+  
+  .profile-sidebar {
+    border-radius: 12px 12px 0 0;
+  }
+  
+  .profile-section-tabs {
+    padding: 0 1rem;
+  }
+  
+  .profile-section {
+    padding: 1.5rem;
+  }
+}
+</style> 

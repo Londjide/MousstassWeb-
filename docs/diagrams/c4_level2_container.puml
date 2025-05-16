@@ -1,0 +1,40 @@
+@startuml MousstassWeb - Diagramme de Conteneurs
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title "Diagramme de Conteneurs - MousstassWeb"
+
+Person(utilisateur, "Utilisateur", "Personne qui utilise l'application pour enregistrer et partager des conversations audio")
+
+System_Boundary(mousstassweb, "MousstassWeb") {
+    Container(frontend, "Frontend", "HTML, CSS, JavaScript", "Interface utilisateur web pour gérer et écouter les enregistrements")
+    
+    Container(backend, "Backend API", "Node.js, Express", "API REST pour gérer les enregistrements, utilisateurs et partages")
+    
+    ContainerDb(db, "Base de données", "MySQL", "Stocke les utilisateurs, métadonnées des enregistrements et informations de partage")
+    
+    Container(auth, "Service d'authentification", "Node.js, JWT", "Gère l'authentification et l'autorisation des utilisateurs")
+    
+    Container(encryptionService, "Service de chiffrement", "Node.js, Crypto", "Gère le chiffrement et déchiffrement des enregistrements")
+    
+    Container(storage, "Service de stockage", "Node.js, FileSystem", "Gère le stockage physique des fichiers audio chiffrés")
+}
+
+System_Ext(serviceMail, "Service de messagerie", "Service externe pour l'envoi de notifications par email")
+
+Rel(utilisateur, frontend, "Accède via", "HTTPS")
+Rel(frontend, backend, "Appelle l'API", "HTTPS/JSON")
+Rel(frontend, auth, "Authentifie et obtient le token JWT", "HTTPS/JSON")
+
+Rel(backend, db, "Lit et écrit", "MySQL Driver")
+Rel(backend, encryptionService, "Utilise pour chiffrer/déchiffrer")
+Rel(backend, storage, "Stocke et récupère les fichiers")
+Rel(backend, auth, "Vérifie l'authentification", "JWT")
+
+Rel(auth, db, "Vérifie les identifiants", "MySQL Driver")
+
+Rel(backend, serviceMail, "Envoie des notifications", "SMTP")
+
+@enduml 

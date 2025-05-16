@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title %> | Missié Moustass Web</title>
+    <title><%= title %></title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container error-container">
-        <div class="error-content">
-            <img src="/assets/images/404.svg" alt="404" class="error-image">
-            <h1>404 - Page non trouvée</h1>
-            <p><%= message %></p>
+    <div class="error-container">
+        <div class="error-box">
+            <h1>Page non trouvée</h1>
+            <p class="error-message"><%= message %></p>
+            <p>La page que vous recherchez n'existe pas ou a été déplacée.</p>
             <a href="/" class="btn btn-primary">Retour à l'accueil</a>
         </div>
     </div>

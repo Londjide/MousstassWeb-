@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
 const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
 require('dotenv').config();
 
 // Middleware
@@ -11,7 +12,7 @@ const { verifyTokenForPages, auth } = require('./middleware/auth');
 const RecordingController = require('./controllers/recording.controller');
 
 // Routes
-const authRoutes = require("./routes/auth.routes");
+const authRoutes = require('./routes/auth.routes.js');
 const recordingRoutes = require('./routes/recording.routes');
 const userRoutes = require('./routes/user.routes');
 
@@ -20,18 +21,18 @@ const app = express();
 
 // Configuration du moteur de template EJS
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../../frontend/views'));
+app.set('views', path.join(__dirname, '../../../frontend/views'));
 
 // Middleware de base
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:"],
-      mediaSrc: ["'self'", "blob:"],
+      defaultSrc: ['\'self\''],
+      scriptSrc: ['\'self\'', '\'unsafe-inline\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
+      fontSrc: ['\'self\'', 'https://fonts.gstatic.com'],
+      imgSrc: ['\'self\'', 'data:'],
+      mediaSrc: ['\'self\'', 'blob:'],
     },
   }
 })); // Sécurité avec configuration pour permettre l'audio
@@ -39,6 +40,24 @@ app.use(cors()); // Gestion du CORS
 app.use(express.json()); // Parsing du JSON
 app.use(express.urlencoded({ extended: true })); // Parsing des URL-encoded forms
 app.use(cookieParser());
+
+// Protection CSRF pour les requêtes non-API
+const csrfProtection = csrf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' } });
+// Appliquer CSRF uniquement aux routes de pages, pas aux API
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) {
+    return csrfProtection(req, res, next);
+  }
+  next();
+});
+
+// Middleware pour ajouter le token CSRF aux templates
+app.use((req, res, next) => {
+  if (req.csrfToken) {
+    res.locals.csrfToken = req.csrfToken();
+  }
+  next();
+});
 
 // Servir les fichiers statiques
 app.use(express.static(path.join(__dirname, '../../frontend/public')));
@@ -92,7 +111,7 @@ app.get('/recordings/:id/edit', verifyTokenForPages, (req, res) => {
 });
 
 // Routes API
-app.use("/api/auth", authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/recordings', recordingRoutes);
 app.use('/api/users', userRoutes);
 

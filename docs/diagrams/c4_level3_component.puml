@@ -1,0 +1,60 @@
+@startuml MousstassWeb - Diagramme de Composants Backend
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title "Diagramme de Composants - Backend MousstassWeb"
+
+Container_Boundary(backend, "Backend API") {
+    Component(apiRouter, "API Router", "Express Router", "Route les requêtes vers les contrôleurs appropriés")
+    
+    Component(authController, "Contrôleur d'authentification", "JavaScript", "Gère l'inscription, connexion et gestion des tokens JWT")
+    Component(userController, "Contrôleur utilisateur", "JavaScript", "Gère les opérations CRUD sur les utilisateurs")
+    Component(recordingController, "Contrôleur d'enregistrement", "JavaScript", "Gère les opérations sur les enregistrements audio")
+    Component(sharingController, "Contrôleur de partage", "JavaScript", "Gère le partage des enregistrements")
+    
+    Component(authMiddleware, "Middleware d'authentification", "JavaScript", "Vérifie les tokens JWT et les permissions")
+    Component(errorHandler, "Gestionnaire d'erreurs", "JavaScript", "Intercepte et formate les erreurs")
+    
+    Component(userModel, "Modèle utilisateur", "JavaScript", "Logique métier et accès aux données utilisateur")
+    Component(recordingModel, "Modèle enregistrement", "JavaScript", "Logique métier et accès aux données des enregistrements")
+    Component(sharingModel, "Modèle partage", "JavaScript", "Logique métier pour le partage")
+    
+    Component(cryptoService, "Service de cryptographie", "JavaScript", "Chiffrement/déchiffrement des enregistrements")
+    Component(fileService, "Service de fichiers", "JavaScript", "Gestion des fichiers audio")
+    Component(dbConnection, "Connexion DB", "MySQL", "Gère la connexion à la base de données")
+}
+
+ContainerDb(database, "Base de données", "MySQL", "Stocke les utilisateurs, enregistrements et partages")
+
+System_Ext(mailService, "Service de messagerie", "SMTP")
+System_Ext(fileStorage, "Stockage de fichiers", "Système de fichiers")
+
+Rel(apiRouter, authController, "Routes d'authentification")
+Rel(apiRouter, userController, "Routes utilisateur")
+Rel(apiRouter, recordingController, "Routes d'enregistrement")
+Rel(apiRouter, sharingController, "Routes de partage")
+
+Rel(authController, userModel, "Utilise")
+Rel(userController, userModel, "Utilise")
+Rel(recordingController, recordingModel, "Utilise")
+Rel(sharingController, sharingModel, "Utilise")
+Rel(sharingController, recordingModel, "Utilise")
+
+Rel(apiRouter, authMiddleware, "Utilise pour protéger les routes")
+Rel(apiRouter, errorHandler, "Utilise pour gérer les erreurs")
+
+Rel(recordingModel, cryptoService, "Utilise pour chiffrer/déchiffrer")
+Rel(recordingModel, fileService, "Utilise pour stocker/récupérer")
+Rel(sharingModel, cryptoService, "Utilise pour le partage sécurisé")
+
+Rel(userModel, dbConnection, "Utilise")
+Rel(recordingModel, dbConnection, "Utilise")
+Rel(sharingModel, dbConnection, "Utilise")
+
+Rel(dbConnection, database, "Connexion SQL")
+Rel(fileService, fileStorage, "Stocke et lit")
+Rel(sharingController, mailService, "Envoie des notifications par mail")
+
+@enduml 
