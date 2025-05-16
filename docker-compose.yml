@@ -32,10 +32,25 @@ services:
     build: ./frontend
     container_name: mousstass_frontend
     restart: always
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - backend
+
+  apache:
+    image: httpd:2.4
+    container_name: mousstass_apache
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./apache/config:/usr/local/apache2/conf
+      - ./apache/logs:/usr/local/apache2/logs
+      - ./frontend/public:/usr/local/apache2/htdocs
+      - ./apache/ssl:/usr/local/apache2/ssl
+    depends_on:
+      - frontend
 
 volumes:
   mysql_data:
