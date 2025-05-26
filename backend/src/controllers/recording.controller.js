@@ -4,11 +4,23 @@ const { validationResult } = require('express-validator');
 const fs = require('fs').promises;
 const path = require('path');
 const db = require('../models/db');
+const crypto = require('../utils/crypto');
+const multer = require('multer');
+
+// Configuration de multer pour le stockage des fichiers
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // Limite à 50 Mo
+});
 
 /**
  * Contrôleur pour la gestion des enregistrements audio
  */
 const RecordingController = {
+  // Middleware pour l'upload de fichiers
+  uploadMiddleware: upload.single('audio'),
+
   /**
    * Crée un nouvel enregistrement audio
    * @param {Object} req - Requête Express
@@ -720,7 +732,7 @@ const RecordingController = {
             contentType = 'application/octet-stream';
             fileExtension = 'bin';
             console.log('[CONTROLLER] Format audio non reconnu. Premiers octets:', 
-              audio.slice(0, 16).toString('hex'));
+                        audio.slice(0, 16).toString('hex'));
           }
         }
         
@@ -751,7 +763,7 @@ const RecordingController = {
         res.send(audio);
       } catch (error) {
         // Différencier les types d'erreur
-        console.error('[CONTROLLER] Erreur lors de l\'accès à l\'enregistrement avec token:', error);
+        console.error('[CONTROLLER] Erreur lors de l\'accès à l'enregistrement avec token:', error);
         
         const errorResponse = {
           success: false,

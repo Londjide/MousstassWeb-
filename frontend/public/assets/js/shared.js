@@ -477,16 +477,13 @@ function initSharedPage() {
             // Réinitialiser le lecteur audio
             audioPlayer.pause();
             audioPlayer.currentTime = 0;
-            audioPlayer.crossOrigin = "anonymous"; // Permet le streaming cross-domain
+            audioPlayer.src = audioUrl;
             
             // Événement pour détecter les erreurs de chargement
             audioPlayer.onerror = function(e) {
               console.error("Erreur de chargement audio:", e);
-              alert("Erreur lors du chargement de l'audio. Veuillez réessayer ou actualiser la page.");
+              alert("Erreur lors du chargement de l'audio. Veuillez réessayer.");
             };
-            
-            // Définir la source après avoir configuré les événements
-            audioPlayer.src = audioUrl;
             
             // Charger le contenu audio
             audioPlayer.load();

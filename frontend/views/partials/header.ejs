@@ -1,21 +1,63 @@
-<div class="logo">
-    <img src="/assets/images/favicon.svg" alt="Missié Moustass Web Logo">
-    <h1>Missié Moustass Web</h1>
-</div>
-<nav id="main-nav">
-    <ul>
-        <li><a href="/" class="active">Accueil</a></li>
-        <li><a href="/recordings">Mes Enregistrements</a></li>
-        <li><a href="/shared">Partagés avec moi</a></li>
-        <li><a href="/profile" id="profile-link">Mon Profil</a></li>
-    </ul>
-</nav>
-<div class="header-user">
-    <div id="user-profile" class="user-profile" style="display: none;">
-        <div id="user-avatar" class="user-avatar"></div>
-        <span id="user-name" class="user-name"></span>
-    </div>
-    <button id="logout-btn" class="btn btn-danger" style="display: none;">Déconnexion</button>
-    <button id="login-btn" class="btn btn-primary" style="display: inline-block;">Connexion</button>
-    <button id="register-btn" class="btn btn-outline" style="display: inline-block;">Inscription</button>
-</div> 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> | MousstassWeb</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <script src="/assets/js/audio-recorder.js" defer></script>
+    <script src="/assets/js/auth.js" defer></script>
+    <% if (typeof jsFile !== 'undefined') { %>
+        <script src="/assets/js/<%= jsFile %>.js" defer></script>
+    <% } %>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="/">MousstassWeb</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">Accueil</a>
+                        </li>
+                        <li class="nav-item auth-required" style="display: none;">
+                            <a class="nav-link" href="/recordings">Mes enregistrements</a>
+                        </li>
+                        <li class="nav-item auth-required" style="display: none;">
+                            <a class="nav-link" href="/profile">Mon profil</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item auth-hidden">
+                            <a class="nav-link" href="/login">Connexion</a>
+                        </li>
+                        <li class="nav-item auth-hidden">
+                            <a class="nav-link" href="/register">Inscription</a>
+                        </li>
+                        <li class="nav-item auth-required" style="display: none;">
+                            <a class="nav-link" href="#" id="logout-link">Déconnexion</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <main class="container py-4">
+        <% if (typeof messages !== 'undefined' && messages.error) { %>
+            <div class="alert alert-danger">
+                <%= messages.error %>
+            </div>
+        <% } %>
+        <% if (typeof messages !== 'undefined' && messages.success) { %>
+            <div class="alert alert-success">
+                <%= messages.success %>
+            </div>
+        <% } %>
+    </main>
+</body>
+</html> 

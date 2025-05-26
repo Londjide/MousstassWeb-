@@ -95,7 +95,7 @@
       <form id="form-login">
         <div class="form-group">
           <label for="login-email">Email</label>
-          <input type="email" id="login-email" required autocomplete="email">
+          <input type="email" id="login-email" required>
         </div>
         <div class="form-group">
           <label for="login-password">Mot de passe</label>
@@ -116,15 +116,15 @@
       <form id="form-register">
         <div class="form-group">    
           <label for="register-full_name">Nom complet</label>
-          <input type="text" id="register-full_name" required autocomplete="name">
+          <input type="text" id="register-full_name" required>
         </div>
         <div class="form-group">
           <label for="register-username">Nom d'utilisateur</label>
-          <input type="text" id="register-username" required autocomplete="username">
+          <input type="text" id="register-username" required>
         </div>
         <div class="form-group">
           <label for="register-email">Email</label>
-          <input type="email" id="register-email" required autocomplete="email">
+          <input type="email" id="register-email" required>
         </div>
         <div class="form-group">
           <label for="register-password">Mot de passe</label>
@@ -142,10 +142,13 @@
     </div>
   </div>
   
-  <!-- Scripts -->
+  <!-- Scripts communs -->
+  <script src="/assets/js/config.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/auth.js"></script>
+  
+  <!-- Script spécifique à la page -->
   <script src="/assets/js/shared.js"></script>
   
   <!-- Script de diagnostic -->
@@ -158,8 +161,7 @@
       const token = localStorage.getItem('moustass_token');
       if (token) {
         // Créer un cookie sécurisé avec le token pour les requêtes de page
-        document.cookie = `token=${token}; path=/; SameSite=Strict; max-age=604800`;
-        document.cookie = `moustass_token=${token}; path=/; SameSite=Strict; max-age=604800`;
+        document.cookie = `token=${token}; path=/; SameSite=Strict`;
         console.log("Token JWT synchronisé du localStorage vers les cookies");
       } else {
         console.log("Pas de token JWT trouvé dans localStorage");

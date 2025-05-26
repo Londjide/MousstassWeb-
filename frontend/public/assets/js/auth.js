@@ -922,3 +922,126 @@ class Auth {
 
 // Création d'une instance pour l'utilisation globale
 const auth = new Auth();
+
+/**
+ * Gestion de l'authentification côté client
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Éléments DOM
+    const authRequiredElements = document.querySelectorAll('.auth-required');
+    const authHiddenElements = document.querySelectorAll('.auth-hidden');
+    const logoutLink = document.getElementById('logout-link');
+    
+    // Vérifier si l'utilisateur est connecté
+    const token = localStorage.getItem('token') || getCookie('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Mettre à jour l'interface en fonction de l'état d'authentification
+    updateAuthUI(token);
+    
+    // Gérer la déconnexion
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    }
+    
+    /**
+     * Met à jour l'interface utilisateur en fonction de l'état d'authentification
+     * @param {string} token - Token JWT
+     */
+    function updateAuthUI(token) {
+        if (token) {
+            // Utilisateur connecté
+            authRequiredElements.forEach(el => el.style.display = 'block');
+            authHiddenElements.forEach(el => el.style.display = 'none');
+            
+            // Si on a un élément pour afficher le nom d'utilisateur
+            const usernameElement = document.getElementById('username');
+            if (usernameElement && user && user.username) {
+                usernameElement.textContent = user.username;
+            }
+            
+            // Si on a un élément pour afficher la photo de profil
+            const profilePicElement = document.getElementById('profile-pic');
+            if (profilePicElement && user && user.profile_picture) {
+                profilePicElement.src = user.profile_picture;
+            }
+        } else {
+            // Utilisateur non connecté
+            authRequiredElements.forEach(el => el.style.display = 'none');
+            authHiddenElements.forEach(el => el.style.display = 'block');
+        }
+    }
+    
+    /**
+     * Déconnecte l'utilisateur
+     */
+    function logout() {
+        // Appel API pour la déconnexion côté serveur
+        fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        })
+        .then(response => {
+            // Supprimer le token et les informations utilisateur
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            
+            // Rediriger vers la page d'accueil
+            window.location.href = '/';
+        })
+        .catch(error => {
+            console.error('Erreur lors de la déconnexion:', error);
+            
+            // En cas d'erreur, on supprime quand même les informations côté client
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            
+            // Rediriger vers la page d'accueil
+            window.location.href = '/';
+        });
+    }
+    
+    /**
+     * Récupère la valeur d'un cookie
+     * @param {string} name - Nom du cookie
+     * @returns {string|null} - Valeur du cookie ou null
+     */
+    function getCookie(name) {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                return cookie.substring(name.length + 1);
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Synchronise le token entre localStorage et cookies
+     */
+    function synchronizeTokens() {
+        const localToken = localStorage.getItem('token');
+        const cookieToken = getCookie('token');
+        
+        if (localToken && !cookieToken) {
+            // Si le token est dans localStorage mais pas dans les cookies, on le met dans les cookies
+            document.cookie = `token=${localToken}; path=/; max-age=86400`;
+        } else if (!localToken && cookieToken) {
+            // Si le token est dans les cookies mais pas dans localStorage, on le met dans localStorage
+            localStorage.setItem('token', cookieToken);
+        }
+    }
+    
+    // Synchroniser les tokens au chargement
+    synchronizeTokens();
+});

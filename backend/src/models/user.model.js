@@ -12,7 +12,7 @@ class User {
    * @returns {Promise<Object>} Utilisateur créé
    */
   static async create(userData) {
-    const {email, password, username, full_name } = userData;
+    const {email, password } = userData;
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
@@ -23,8 +23,8 @@ class User {
       
       // Insertion de l'utilisateur
       const [result] = await connection.query(
-        'INSERT INTO users (email, password, username, full_name) VALUES (?, ?, ?, ?)',
-        [email, passwordHash, username || email.split('@')[0], full_name || '']
+        'INSERT INTO users (email, password_hash, salt) VALUES (?, ?, ?)',
+        [email, passwordHash, salt]
       );
       
       const userId = result.insertId;
@@ -70,7 +70,7 @@ class User {
     
     try {
       const [rows] = await db.query(
-        'SELECT id, email, username, full_name, password, (role = "admin") as is_admin FROM users WHERE email = ?',
+        'SELECT id, email, username, full_name, password_hash, is_admin FROM users WHERE email = ?',
         [email]
       );
 
@@ -84,20 +84,20 @@ class User {
       const user = rows[0];
       console.log(`Utilisateur trouvé: ${user.email}, vérification du mot de passe...`);
       
-      if (!user.password) {
-        console.log(`ERREUR: Utilisateur sans mot de passe: ${user.email}`);
+      if (!user.password_hash) {
+        console.log(`ERREUR: Utilisateur sans hash de mot de passe: ${user.email}`);
         return null;
       }
 
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
       console.log(`Vérification du mot de passe: ${isPasswordValid ? 'Succès' : 'Échec'}`);
 
       if (!isPasswordValid) {
         return null;
       }
 
-      // Ne pas retourner le mot de passe
-      delete user.password;
+      // Ne pas retourner le hash du mot de passe
+      delete user.password_hash;
       return user;
     } catch (error) {
       console.error('Erreur lors de l\'authentification:', error);
@@ -112,7 +112,7 @@ class User {
    */
   static async findById(id) {
     const [rows] = await db.query(
-      'SELECT id, email, username, full_name, (role = "admin") as is_admin, created_at, photo_url FROM users WHERE id = ?',
+      'SELECT id, email, username, full_name, is_admin, created_at, photo_url, password_hash FROM users WHERE id = ?',
       [id]
     );
     
@@ -153,7 +153,7 @@ class User {
    */
   static async findAll() {
     const [rows] = await db.query(
-      'SELECT id, email, (role = "admin") as is_admin, created_at FROM users'
+      'SELECT id, email, is_admin, created_at FROM users'
     );
     
     return rows;
@@ -166,7 +166,7 @@ class User {
    */
   static async findByEmail(email) {
     const [rows] = await db.query(
-      'SELECT id, email, password, (role = "admin") as is_admin, created_at FROM users WHERE email = ?',
+      'SELECT id, email, password_hash, is_admin, created_at FROM users WHERE email = ?',
       [email]
     );
     return rows.length > 0 ? rows[0] : null;
@@ -296,7 +296,7 @@ class User {
         // Mettre à jour le mot de passe dans la base de données
         try {
           const [result] = await db.query(
-            'UPDATE users SET password = ? WHERE id = ?',
+            'UPDATE users SET password_hash = ? WHERE id = ?',
             [passwordHash, userId]
           );
           
@@ -321,4 +321,4 @@ class User {
   }
 }
 
-module.exports = User; 
+module.exports = User;

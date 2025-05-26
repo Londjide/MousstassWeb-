@@ -99,9 +99,120 @@ const generateSharingToken = (recordingKey, secret) => {
   }
 };
 
+/**
+ * Utilitaire pour le chiffrement/déchiffrement avec AES-256
+ */
+const cryptoUtils = {
+  /**
+   * Chiffre des données avec AES-256
+   * @param {Buffer|string} data - Données à chiffrer
+   * @param {string} [key] - Clé de chiffrement (générée si non fournie)
+   * @returns {Object} - Données chiffrées et clé
+   */
+  encrypt: (data, key = null) => {
+    try {
+      // Générer une clé si non fournie
+      const encryptionKey = key || crypto.randomBytes(32).toString('hex');
+      
+      // Générer un vecteur d'initialisation
+      const iv = crypto.randomBytes(16);
+      
+      // Créer le chiffreur
+      const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey, 'hex'), iv);
+      
+      // Chiffrer les données
+      let encrypted;
+      if (Buffer.isBuffer(data)) {
+        encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
+      } else {
+        encrypted = Buffer.concat([cipher.update(data, 'utf8'), cipher.final()]);
+      }
+      
+      // Concaténer IV et données chiffrées
+      const encryptedData = Buffer.concat([iv, encrypted]);
+      
+      return {
+        encryptedData,
+        key: encryptionKey
+      };
+    } catch (error) {
+      console.error('Erreur lors du chiffrement:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Déchiffre des données avec AES-256
+   * @param {Buffer} encryptedData - Données chiffrées (avec IV en préfixe)
+   * @param {string} key - Clé de déchiffrement
+   * @returns {Buffer} - Données déchiffrées
+   */
+  decrypt: (encryptedData, key) => {
+    try {
+      // Extraire l'IV (les 16 premiers octets)
+      const iv = encryptedData.slice(0, 16);
+      
+      // Extraire les données chiffrées (le reste)
+      const encryptedText = encryptedData.slice(16);
+      
+      // Créer le déchiffreur
+      const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key, 'hex'), iv);
+      
+      // Déchiffrer les données
+      const decrypted = Buffer.concat([decipher.update(encryptedText), decipher.final()]);
+      
+      return decrypted;
+    } catch (error) {
+      console.error('Erreur lors du déchiffrement:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Génère un hachage SHA-256 pour vérifier l'intégrité des données
+   * @param {Buffer|string} data - Données à hacher
+   * @returns {string} - Hachage SHA-256 en hexadécimal
+   */
+  generateHash: (data) => {
+    try {
+      const hash = crypto.createHash('sha256');
+      hash.update(data);
+      return hash.digest('hex');
+    } catch (error) {
+      console.error('Erreur lors de la génération du hachage:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Vérifie l'intégrité des données en comparant les hachages
+   * @param {Buffer|string} data - Données à vérifier
+   * @param {string} hash - Hachage à comparer
+   * @returns {boolean} - Résultat de la vérification
+   */
+  verifyIntegrity: (data, hash) => {
+    try {
+      const calculatedHash = cryptoUtils.generateHash(data);
+      return calculatedHash === hash;
+    } catch (error) {
+      console.error('Erreur lors de la vérification de l\'intégrité:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Génère un token de partage sécurisé
+   * @returns {string} - Token unique
+   */
+  generateSharingToken: () => {
+    return crypto.randomBytes(32).toString('hex');
+  }
+};
+
 module.exports = {
   generateIv,
   encryptWithKey,
   decryptWithTokenSecret,
-  generateSharingToken
+  generateSharingToken,
+  ...cryptoUtils
 }; 

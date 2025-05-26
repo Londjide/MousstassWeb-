@@ -1,21 +1,90 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs').promises;
 const path = require('path');
-require('dotenv').config();
+const dotenv = require('dotenv');
+
+// Chargement des variables d'environnement
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+
+// Variables de connexion
+const DB_HOST = process.env.DB_HOST || 'localhost';
+const DB_PORT = process.env.DB_PORT || 3306;
+const DB_USER = process.env.DB_USER || 'root';
+const DB_PASSWORD = process.env.DB_PASSWORD || 'root';
+const DB_NAME = process.env.DB_NAME || 'moustass_web';
+
+let pool = null;
 
 /**
- * Configuration de la connexion à la base de données
- * Les paramètres sont récupérés du fichier .env
+ * Initialise le pool de connexions à la base de données
+ * @returns {Promise<void>}
  */
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'root',
-  database: process.env.DB_NAME || 'moustass_web',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+const initDb = async () => {
+  try {
+    console.log('Initialisation de la connexion à la base de données...');
+    console.log(`Connexion à MySQL sur ${DB_HOST}:${DB_PORT} avec l'utilisateur ${DB_USER}`);
+    
+    // Création du pool de connexions
+    pool = mysql.createPool({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_NAME,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+    
+    // Test de connexion
+    const connection = await pool.getConnection();
+    console.log('Connexion à la base de données établie avec succès');
+    connection.release();
+    
+    return Promise.resolve();
+  } catch (error) {
+    console.error('Erreur de connexion à la base de données:', error.message);
+    
+    // Si la base de données n'existe pas, on tente de la créer
+    if (error.errno === 1049) {
+      try {
+        console.log('La base de données n\'existe pas. Tentative de création...');
+        await createDatabase();
+        return await initDb(); // Appel récursif pour réinitialiser le pool
+      } catch (createError) {
+        console.error('Échec de création de la base de données:', createError.message);
+        return Promise.reject(createError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+};
+
+/**
+ * Crée la base de données si elle n'existe pas
+ * @returns {Promise<void>}
+ */
+const createDatabase = async () => {
+  const rootPool = mysql.createPool({
+    host: DB_HOST,
+    port: DB_PORT,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    waitForConnections: true,
+    connectionLimit: 1
+  });
+  
+  try {
+    await rootPool.query(`CREATE DATABASE IF NOT EXISTS ${DB_NAME} 
+                         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    console.log(`Base de données ${DB_NAME} créée avec succès`);
+    await rootPool.end();
+  } catch (error) {
+    await rootPool.end();
+    throw error;
+  }
+};
 
 /**
  * Exécute une requête SQL avec les paramètres fournis
@@ -24,10 +93,15 @@ const pool = mysql.createPool({
  * @returns {Promise<Array>} Résultat de la requête
  */
 const query = async (sql, params = []) => {
+  if (!pool) {
+    await initDb();
+  }
+  
   try {
-    return await pool.query(sql, params);
+    const [rows] = await pool.execute(sql, params);
+    return rows;
   } catch (error) {
-    console.error('Erreur d\'exécution de la requête SQL:', error);
+    console.error('Erreur lors de l\'exécution de la requête:', error.message);
     throw error;
   }
 };
@@ -37,6 +111,10 @@ const query = async (sql, params = []) => {
  * @returns {Promise<Object>} Connexion MySQL
  */
 const getConnection = async () => {
+  if (!pool) {
+    await initDb();
+  }
+  
   try {
     return await pool.getConnection();
   } catch (error) {
@@ -50,8 +128,13 @@ const getConnection = async () => {
  * @returns {Promise<boolean>} Vrai si la connexion est établie
  */
 const testConnection = async () => {
+  if (!pool) {
+    await initDb();
+  }
+  
   try {
-    await pool.query('SELECT 1');
+    const [result] = await pool.query('SELECT 1 as test');
+    console.log('Test de connexion réussi:', result);
     return true;
   } catch (error) {
     console.error('Erreur de connexion à la base de données:', error);
@@ -60,56 +143,49 @@ const testConnection = async () => {
 };
 
 /**
- * Initialise la base de données avec le script SQL
+ * Initialise la base de données avec les tables nécessaires
  * @returns {Promise<boolean>} Vrai si l'initialisation est réussie
  */
 const initDatabase = async () => {
   try {
-    // Créer la base de données si elle n'existe pas
-    const rootPool = mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || 'root',
-      waitForConnections: true,
-      connectionLimit: 1,
-      queueLimit: 0
-    });
+    // Vérifier si le fichier d'initialisation existe
+    const initFilePath = path.join(__dirname, '../../db/migrations/init.sql');
     
-    await rootPool.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME || 'moustass_web'} 
-                          CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    try {
+      await fs.access(initFilePath);
+    } catch (err) {
+      console.log('Fichier d\'initialisation non trouvé:', initFilePath);
+      // Créer les tables de base si le fichier init.sql n'existe pas
+      return await createBasicTables();
+    }
     
-    // Lire le script d'initialisation
-    const initScript = await fs.readFile(
-      path.join(__dirname, '../../db/init.sql'),
-      'utf8'
-    );
+    // Lire et exécuter le script d'initialisation
+    const initScript = await fs.readFile(initFilePath, 'utf8');
     
-    // Exécuter le script
     const connection = await getConnection();
     
     try {
-      // Désactiver les contraintes de clé étrangère pour permettre la suppression des tables dans n'importe quel ordre
+      console.log('Exécution du script d\'initialisation...');
+      
+      // Désactiver temporairement les contraintes de clé étrangère
       await connection.query('SET FOREIGN_KEY_CHECKS = 0;');
       
-      // Supprimer manuellement les tables qui posent problème
-      await connection.query('DROP TABLE IF EXISTS audio_records;');
-      
+      // Exécuter le script par blocs
       const statements = initScript
         .split(';')
         .filter(stmt => stmt.trim() !== '');
       
       for (const stmt of statements) {
-        await connection.query(stmt + ';');
+        if (stmt.trim()) {
+          await connection.query(stmt + ';');
+        }
       }
       
-      // Réactiver les contraintes de clé étrangère
+      // Réactiver les contraintes
       await connection.query('SET FOREIGN_KEY_CHECKS = 1;');
       
-      console.log('Base de données initialisée avec succès.');
+      console.log('Base de données initialisée avec succès');
       return true;
-    } catch (error) {
-      console.error('Erreur lors de l\'initialisation de la base de données:', error);
-      throw error;
     } finally {
       connection.release();
     }
@@ -119,9 +195,56 @@ const initDatabase = async () => {
   }
 };
 
+/**
+ * Crée les tables de base si le fichier init.sql n'existe pas
+ * @returns {Promise<boolean>} Vrai si les tables ont été créées
+ */
+const createBasicTables = async () => {
+  const connection = await getConnection();
+  
+  try {
+    // Créer la table users
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    
+    // Créer la table audio_records
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS audio_records (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        filename VARCHAR(255) NOT NULL,
+        duration INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    
+    console.log('Tables de base créées avec succès');
+    return true;
+  } catch (error) {
+    console.error('Erreur lors de la création des tables de base:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
+  initDb,
   query,
   getConnection,
   testConnection,
-  initDatabase
+  initDatabase,
+  createBasicTables
 };

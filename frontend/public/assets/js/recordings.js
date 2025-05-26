@@ -260,28 +260,26 @@ function showPlayerModal(recording) {
       return;
     }
     
-    console.log("Synchronisation des cookies pour la lecture audio");
-    // Synchronisation explicite des cookies avant toute lecture (7 jours = 604800 secondes)
+    // Synchronisation explicite des cookies avant toute lecture
     document.cookie = `moustass_token=${token}; path=/; SameSite=Strict; max-age=604800`;
     document.cookie = `token=${token}; path=/; SameSite=Strict; max-age=604800`;
+    console.log("Cookies synchronisés avant lecture audio");
     
-    // Configuration de l'URL de streaming (utilisez simplement l'URL sans token)
+    // Configuration de l'URL de streaming sans ajouter de token dans l'URL
+    // On utilisera les cookies pour l'authentification
     const audioUrl = `/api/recordings/${recording.id}/stream`;
     console.log("URL audio configurée:", audioUrl);
     
     // Réinitialiser le lecteur audio
     audioPlayer.pause();
     audioPlayer.currentTime = 0;
-    audioPlayer.crossOrigin = "anonymous"; // Permet le streaming cross-domain
+    audioPlayer.src = audioUrl;
     
     // Événement pour détecter les erreurs de chargement
     audioPlayer.onerror = function(e) {
       console.error("Erreur de chargement audio:", e);
-      alert("Erreur lors du chargement de l'audio. Veuillez réessayer ou actualiser la page.");
+      alert("Erreur lors du chargement de l'audio. Veuillez réessayer.");
     };
-    
-    // Définir la source après avoir configuré les gestionnaires d'événements
-    audioPlayer.src = audioUrl;
     
     // Charger le contenu audio
     audioPlayer.load();

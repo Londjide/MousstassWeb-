@@ -1,68 +1,18 @@
+const User = require('../models/user.model');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const UserModel = require('../models/user.model');
 const security = require('../utils/security');
 const AccessLogModel = require('../models/accesslog.model');
 
+// Clé secrète pour les tokens JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'MoustassWeb_secret_key';
+// Durée de validité du token (24h)
+const JWT_EXPIRES_IN = '24h';
+
 /**
- * Contrôleur pour gérer l'authentification
+ * Contrôleur pour l'authentification
  */
-const AuthController = {
-  // Map pour suivre les tentatives de connexion échouées
-  loginAttempts: new Map(),
-  
-  /**
-   * Vérifie la force du mot de passe
-   * @param {string} password - Mot de passe à vérifier 
-   * @returns {boolean} Vrai si le mot de passe est assez fort
-   */
-  checkPasswordStrength(password) {
-    if (!password || password.length < 8) return false;
-    
-    // Vérifier différents critères de complexité
-    const hasUppercase = /[A-Z]/.test(password);
-    const hasLowercase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
-    // Le mot de passe doit respecter au moins 3 des 4 critères
-    return (hasUppercase + hasLowercase + hasNumbers + hasSpecialChars) >= 3;
-  },
-  
-  /**
-   * Vérifie si l'adresse IP est bloquée
-   * @param {string} ip - Adresse IP à vérifier
-   * @returns {boolean} Vrai si l'adresse IP est bloquée
-   */
-  isIpBlocked(ip) {
-    const attempts = this.loginAttempts.get(ip);
-    if (!attempts) return false;
-    
-    // Bloquer après 5 tentatives échouées pendant 15 minutes
-    if (attempts.count >= 5) {
-      const blockExpiration = attempts.timestamp + 15 * 60 * 1000; // 15 minutes
-      if (Date.now() < blockExpiration) {
-        return true;
-      } else {
-        // Réinitialiser les tentatives après la période de blocage
-        this.loginAttempts.delete(ip);
-        return false;
-      }
-    }
-    return false;
-  },
-  
-  /**
-   * Enregistre une tentative de connexion échouée
-   * @param {string} ip - Adresse IP à enregistrer
-   */
-  recordFailedAttempt(ip) {
-    const attempts = this.loginAttempts.get(ip) || { count: 0, timestamp: Date.now() };
-    attempts.count += 1;
-    attempts.timestamp = Date.now();
-    this.loginAttempts.set(ip, attempts);
-  },
-  
+const authController = {
   /**
    * Inscription d'un nouvel utilisateur
    * @param {Object} req - Requête Express
@@ -70,71 +20,64 @@ const AuthController = {
    */
   register: async (req, res) => {
     try {
-      // Validation des données
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      const { username, email, full_name, password } = req.body;
-
-      // Vérifier la force du mot de passe
-      if (!AuthController.checkPasswordStrength(password)) {
+      const { username, email, password } = req.body;
+      
+      // Vérifier que tous les champs requis sont présents
+      if (!username || !email || !password) {
         return res.status(400).json({ 
-          success: false,
-          message: 'Le mot de passe doit contenir au moins 8 caractères et combiner majuscules, minuscules, chiffres et caractères spéciaux' 
+          success: false, 
+          message: 'Tous les champs sont obligatoires'
         });
       }
       
-      // Vérifier si l'email existe déjà
-      const existingUser = await UserModel.findByEmail(email);
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = await User.findByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ 
-          success: false,
-          message: 'Cet email est déjà utilisé' 
+        return res.status(409).json({ 
+          success: false, 
+          message: 'Un utilisateur avec cet email existe déjà'
         });
       }
-
-      // Créer le nouvel utilisateur
-      const user = await UserModel.create({ username, email, full_name, password });
-
-      // Vérifier que JWT_SECRET est défini
-      if (!process.env.JWT_SECRET) {
-        console.error('Erreur critique: JWT_SECRET n\'est pas défini dans les variables d\'environnement');
-        return res.status(500).json({
-          success: false,
-          message: 'Erreur de configuration du serveur'
+      
+      // Vérifier si le nom d'utilisateur est déjà pris
+      const existingUsername = await User.findByUsername(username);
+      if (existingUsername) {
+        return res.status(409).json({ 
+          success: false, 
+          message: 'Ce nom d\'utilisateur est déjà pris'
         });
       }
-
-      // Générer le token JWT avec expiration à 7 jours
+      
+      // Créer l'utilisateur
+      const newUser = await User.create({ username, email, password });
+      
+      // Créer un token JWT
       const token = jwt.sign(
-        { id: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        { id: newUser.id, username: newUser.username },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
       );
-
+      
       res.status(201).json({
         success: true,
-        message: 'Inscription réussie',
+        message: 'Utilisateur créé avec succès',
         user: {
-          // id: user.id,
-          // email: user.email,
-          username: user.username,
-          full_name: user.full_name,
-          // is_admin: user.is_admin
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          profile_picture: newUser.profile_picture
         },
         token
       });
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', error);
       res.status(500).json({ 
-        success: false,
-        message: 'Erreur lors de l\'inscription' 
+        success: false, 
+        message: 'Erreur lors de l\'inscription'
       });
     }
   },
-  
+
   /**
    * Connexion d'un utilisateur
    * @param {Object} req - Requête Express
@@ -142,148 +85,113 @@ const AuthController = {
    */
   login: async (req, res) => {
     try {
-      console.log('Tentative de connexion avec les données:', JSON.stringify(req.body));
-      
-      // Vérifier si l'IP est bloquée pour cause de trop nombreuses tentatives
-      const clientIp = req.ip;
-      if (AuthController.isIpBlocked(clientIp)) {
-        console.log(`Tentative de connexion bloquée pour l'IP: ${clientIp} (trop de tentatives)`);
-        return res.status(429).json({
-          success: false,
-          message: 'Trop de tentatives infructueuses. Réessayez dans 15 minutes.'
-        });
-      }
-      
-      // Validation des données
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        console.log('Erreurs de validation:', JSON.stringify(errors.array()));
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Données invalides',
-          errors: errors.array()
-        });
-      }
-
       const { email, password } = req.body;
       
+      // Vérifier que tous les champs requis sont présents
       if (!email || !password) {
-        console.log('Email ou mot de passe manquant');
-        return res.status(400).json({
-          success: false,
-          message: 'Email et mot de passe requis'
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Email et mot de passe sont obligatoires'
         });
       }
-
-      console.log(`Tentative d'authentification pour l'email: ${email}`);
       
-      // Vérifier les identifiants
-      const user = await UserModel.authenticate(email, password);
-      
+      // Rechercher l'utilisateur
+      const user = await User.findByEmail(email);
       if (!user) {
-        console.log(`Échec d'authentification pour l'email: ${email}`);
-        // Enregistrer la tentative échouée
-        AuthController.recordFailedAttempt(clientIp);
         return res.status(401).json({ 
-          success: false,
-          message: 'Email ou mot de passe incorrect' 
+          success: false, 
+          message: 'Email ou mot de passe incorrect'
         });
       }
-
-      console.log(`Authentification réussie pour l'utilisateur: ${user.email}`);
       
-      // Réinitialiser les tentatives de connexion pour cette IP
-      AuthController.loginAttempts.delete(clientIp);
-
-      // Vérifier que JWT_SECRET est défini
-      if (!process.env.JWT_SECRET) {
-        console.error('Erreur critique: JWT_SECRET n\'est pas défini dans les variables d\'environnement');
-        return res.status(500).json({
-          success: false,
-          message: 'Erreur de configuration du serveur'
+      // Vérifier le mot de passe
+      const passwordMatch = await User.comparePassword(password, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Email ou mot de passe incorrect'
         });
       }
-
-      // Générer le token JWT avec expiration à 7 jours
+      
+      // Créer un token JWT
       const token = jwt.sign(
-        { id: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        { id: user.id, username: user.username },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
       );
       
-      console.log(`Token généré pour l'utilisateur: ${user.email}`);
-
-      // Journaliser la connexion réussie
-      try {
-        await AccessLogModel.create({
-          user_id: user.id,
-          action: 'LOGIN',
-          ip_address: req.ip,
-          user_agent: req.headers['user-agent'],
-          success: true
-        });
-      } catch (logError) {
-        console.error('Erreur lors de la journalisation de la connexion:', logError);
-        // Ne pas bloquer l'authentification en cas d'erreur de journalisation
-      }
-
-      res.json({
+      // Définir le cookie
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24h
+      });
+      
+      res.status(200).json({
         success: true,
         message: 'Connexion réussie',
         user: {
+          id: user.id,
           username: user.username,
-          full_name: user.full_name,
+          email: user.email,
+          profile_picture: user.profile_picture
         },
         token
       });
     } catch (error) {
       console.error('Erreur lors de la connexion:', error);
       res.status(500).json({ 
-        success: false,
-        message: 'Erreur serveur lors de la connexion' 
+        success: false, 
+        message: 'Erreur lors de la connexion'
       });
     }
   },
-  
+
   /**
-   * Déconnexion d'un utilisateur (côté serveur)
+   * Déconnexion d'un utilisateur
    * @param {Object} req - Requête Express
    * @param {Object} res - Réponse Express
    */
-  logout: async (req, res) => {
+  logout: (req, res) => {
     try {
-      // Comme JWT est stateless, on se contente de journaliser la déconnexion
-      // Le token devra être supprimé côté client
-      if (req.user) {
-        await AccessLogModel.create({
-          user_id: req.user.id,
-          action: 'LOGOUT',
-          ip_address: req.ip,
-          user_agent: req.headers['user-agent'],
-          success: true
-        });
-      }
+      // Supprimer le cookie
+      res.clearCookie('token');
       
-      res.json({ message: 'Déconnexion réussie' });
+      res.status(200).json({
+        success: true,
+        message: 'Déconnexion réussie'
+      });
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
-      res.status(500).json({ message: 'Erreur lors de la déconnexion' });
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erreur lors de la déconnexion'
+      });
     }
   },
-  
+
   /**
-   * Vérifie la validité du token JWT
+   * Vérification du token JWT
    * @param {Object} req - Requête Express
    * @param {Object} res - Réponse Express
    */
   verifyToken: (req, res) => {
-    // Si cette route est atteinte, c'est que le middleware auth a validé le token
-    res.json({ 
-      valid: true,
-      user: req.user
-    });
+    try {
+      // Si le middleware d'authentification a passé, le token est valide
+      res.status(200).json({
+        success: true,
+        message: 'Token valide',
+        user: req.user
+      });
+    } catch (error) {
+      console.error('Erreur lors de la vérification du token:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erreur lors de la vérification du token'
+      });
+    }
   },
-  
+
   /**
    * Modification du mot de passe
    * @param {Object} req - Requête Express
@@ -312,7 +220,7 @@ const AuthController = {
       
       // Récupération de l'utilisateur
       try {
-        const user = await UserModel.findById(userId);
+        const user = await User.findById(userId);
         console.log('Utilisateur trouvé:', user ? 'oui' : 'non');
         
         if (!user) {
@@ -338,7 +246,7 @@ const AuthController = {
           
           // Changement du mot de passe
           try {
-            await UserModel.changePassword(userId, newPassword);
+            await User.changePassword(userId, newPassword);
             console.log('Mot de passe changé avec succès');
             
             // Journalisation du changement de mot de passe
@@ -385,7 +293,7 @@ const AuthController = {
    */
   getMe: async (req, res) => {
     try {
-      const user = await UserModel.findById(req.user.id);
+      const user = await User.findById(req.user.id);
       if (!user) {
         return res.status(404).json({ 
           success: false,
@@ -414,4 +322,4 @@ const AuthController = {
   }
 };
 
-module.exports = AuthController;
+module.exports = authController;

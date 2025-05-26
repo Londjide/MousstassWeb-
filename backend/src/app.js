@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs').promises;
 const cookieParser = require('cookie-parser');
 const csrf = require('csurf');
+const morgan = require('morgan');
+const db = require('./utils/db');
 require('dotenv').config();
 
 // Middleware
@@ -12,7 +14,7 @@ const { verifyTokenForPages, auth } = require('./middleware/auth');
 const RecordingController = require('./controllers/recording.controller');
 
 // Routes
-const authRoutes = require('./routes/auth.routes.js');
+const authRoutes = require('./routes/auth.route');
 const recordingRoutes = require('./routes/recording.routes');
 const userRoutes = require('./routes/user.routes');
 
@@ -21,25 +23,31 @@ const app = express();
 
 // Configuration du moteur de template EJS
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../../../frontend/views'));
+app.set('views', path.join(__dirname, '../../frontend/views'));
 
 // Middleware de base
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ['\'self\''],
-      scriptSrc: ['\'self\'', '\'unsafe-inline\''],
-      styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
-      fontSrc: ['\'self\'', 'https://fonts.gstatic.com'],
-      imgSrc: ['\'self\'', 'data:'],
-      mediaSrc: ['\'self\'', 'blob:'],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:"],
+      mediaSrc: ["'self'", "blob:"],
     },
   }
 })); // Sécurité avec configuration pour permettre l'audio
-app.use(cors()); // Gestion du CORS
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://localhost:8443', 'http://localhost:8080'] 
+    : '*',
+  credentials: true
+}));
 app.use(express.json()); // Parsing du JSON
 app.use(express.urlencoded({ extended: true })); // Parsing des URL-encoded forms
 app.use(cookieParser());
+app.use(morgan('dev'));
 
 // Protection CSRF pour les requêtes non-API
 const csrfProtection = csrf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' } });
@@ -61,7 +69,7 @@ app.use((req, res, next) => {
 
 // Servir les fichiers statiques
 app.use(express.static(path.join(__dirname, '../../frontend/public')));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // Middleware pour les logs de base
 app.use((req, res, next) => {
@@ -119,23 +127,32 @@ app.get('/api/protected', auth, (req, res) => {
   res.json({ message: 'Tu es authentifié !' });
 });
 
-// Middleware de gestion des erreurs 404
-app.use((req, res, next) => {
-  res.status(404).render('404', {
-    title: 'Page non trouvée',
-    message: 'La ressource demandée n\'existe pas'
+// Gestion des erreurs 404
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route non trouvée'
   });
 });
 
-// Middleware de gestion des erreurs
+// Gestion des erreurs globales
 app.use((err, req, res, next) => {
-  console.error('Erreur serveur:', err.stack);
-  
-  res.status(err.statusCode || 500).render('error', {
-    title: 'Erreur',
-    message: err.message || 'Erreur serveur interne',
-    error: process.env.NODE_ENV === 'development' ? err : {}
+  console.error('Erreur serveur:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Erreur serveur interne'
   });
 });
+
+// Test de la connexion à la base de données au démarrage
+db.testConnection()
+  .then(connected => {
+    if (!connected) {
+      console.error('ATTENTION: Impossible de se connecter à la base de données.');
+    }
+  })
+  .catch(err => {
+    console.error('Erreur lors du test de connexion à la base de données:', err);
+  });
 
 module.exports = app;
